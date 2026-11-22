@@ -43,11 +43,20 @@ export function registerAdminRoutes(app,db,sockets,serverInfo) {
     const userRows=db.prepare("SELECT id,username,device_id AS deviceId,created_at AS createdAt FROM users ORDER BY created_at DESC").all().map(u=>({...u,online:(sockets.get(u.id)?.size||0)>0,connections:sockets.get(u.id)?.size||0}));
     const deviceRows=db.prepare("SELECT d.id,d.created_at AS createdAt,d.last_seen AS lastSeen,u.username FROM devices d LEFT JOIN users u ON u.device_id=d.id ORDER BY d.last_seen DESC").all().map(d=>({...d,online:userRows.some(u=>u.deviceId===d.id&&u.online)}));
     const activityRows=db.prepare("SELECT id,event,detail,created_at AS createdAt FROM admin_activity ORDER BY id DESC LIMIT 12").all();
-    return {server:{name:serverInfo.name,uptimeSeconds:Math.floor(process.uptime()),nodeVersion:process.version,platform:process.platform,startedAt:new Date(Date.now()-process.uptime()*1000).toISOString()},stats:{users,online,devices,onlineDevices:deviceRows.filter(d=>d.online).length,conversations,messages,nodes:2},messagesPerHour:hourly,users:userRows,devices:deviceRows,activity:activityRows,services:[{name:"HTTP API",status:"Operational"},{name:"WebSocket",status:"Operational"},{name:"SQLite",status:"Operational"},{name:"ESP-12E gateway",status:process.env.BITVOID_GATEWAY_URL?"Configured":"Not reporting"}]};
+    return {server:{name:serverInfo.name,uptimeSeconds:Math.floor(process.uptime()),nodeVersion:process.version,platform:process.platform,startedAt:new Date(Date.now()-process.uptime()*1000).toISOString()},stats:{users,online,devices,onlineDevices:deviceRows.filter(d=>d.online).length,conversations,messages,nodes:2},messagesPerHour:hourly,users:userRows,devices:deviceRows,activity:activityRows,services:[{name:"HTTP API",status:"Operational"},{name:"WebSocket",status:"Operational"},{name:"SQLite",status:"Operational"},{name:"ESP-12E gateway",status:serverInfo.gatewayMonitor?.getSnapshot().status==="online"?"Online":serverInfo.gatewayMonitor?.getSnapshot().status==="not-configured"?"Not configured":"Offline"}],gateway:serverInfo.gatewayMonitor?.getSnapshot()||{status:"not-configured",configured:false,telemetry:null,error:"Gateway monitor unavailable."}};
   });
   app.get("/admin/api/users",{preHandler:auth},async()=>({users:db.prepare("SELECT u.id,u.username,u.device_id AS deviceId,u.created_at AS createdAt,d.last_seen AS lastSeen FROM users u LEFT JOIN devices d ON d.id=u.device_id ORDER BY u.created_at DESC").all().map(u=>({...u,online:[...sockets.keys()].some(id=>id===u.id&&(sockets.get(id)?.size||0)>0)}))}));
   app.get("/admin/api/devices",{preHandler:auth},async()=>({devices:db.prepare("SELECT d.id,d.created_at AS createdAt,d.last_seen AS lastSeen,u.username FROM devices d LEFT JOIN users u ON u.device_id=d.id ORDER BY d.last_seen DESC").all()}));
-  app.get("/admin/api/nodes",{preHandler:auth},async()=>({nodes:[{id:"bv-pc-server",name:serverInfo.name,type:"PC coordinator",status:"online",address:"localhost",role:"Coordinator"},{id:"esp12e-gateway",name:"ESP-12E Wi-Fi gateway",type:"ESP8266 SoftAP",status:process.env.BITVOID_GATEWAY_URL?"configured":"not-reporting",address:process.env.BITVOID_GATEWAY_URL||"Not configured",role:"Network gateway"}]}));
+  app.get("/admin/api/nodes",{preHandler:auth},async()=>{
+    const gateway=serverInfo.gatewayMonitor?.getSnapshot()||{status:"not-configured",configured:false,telemetry:null,error:"Gateway monitor unavailable."};
+    const t=gateway.telemetry;
+    return {nodes:[
+      {id:"bv-pc-server",name:serverInfo.name,type:"PC coordinator",status:"online",address:"localhost",role:"Coordinator"},
+      {id:"esp12e-gateway",name:"ESP-12E Wi-Fi gateway",type:"ESP8266 SoftAP",status:gateway.status,address:t?.ip||gateway.endpoint||"Not configured",role:"Network gateway",
+       checkedAt:gateway.checkedAt,lastSeenAt:gateway.lastSeenAt,latencyMs:gateway.latencyMs,error:gateway.error,
+       telemetry:t?{gatewayId:t.gatewayId,hostname:t.hostname,ssid:t.ssid,ip:t.ip,mac:t.mac,clients:t.clients,maxClients:t.maxClients,uptimeSeconds:t.uptimeSeconds,freeHeapBytes:t.freeHeapBytes,chipId:t.chipId,flashBytes:t.flashBytes,coreVersion:t.coreVersion}:null}
+    ]};
+  });
   app.get("/admin/api/activity",{preHandler:auth},async()=>({activity:db.prepare("SELECT id,event,detail,created_at AS createdAt FROM admin_activity ORDER BY id DESC LIMIT 100").all()}));
   app.log.info("BitVoid admin dashboard routes registered");
 }
