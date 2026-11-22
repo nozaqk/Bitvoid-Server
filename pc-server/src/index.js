@@ -92,11 +92,16 @@ app.post("/api/v1/conversations", { preHandler: requireUser }, async (req, reply
   const id = randomUUID(), now = new Date().toISOString();
   const insertConversation = db.prepare("INSERT INTO conversations(id,type,title,created_at,created_by) VALUES(?,?,?,?,?)");
   const insertMember = db.prepare("INSERT INTO conversation_members(conversation_id,user_id,joined_at) VALUES(?,?,?)");
-  db.transaction(() => {
+  db.exec("BEGIN IMMEDIATE");
+  try {
     insertConversation.run(id,type,title,now,req.user.id);
     insertMember.run(id,req.user.id,now);
     for (const user of users) insertMember.run(id,user.id,now);
-  })();
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
   return reply.code(201).send({ id,type,title,createdAt:now,members:[req.user.username,...users.map(u=>u.username)] });
 });
 app.get("/api/v1/conversations", { preHandler: requireUser }, async req => db.prepare(
