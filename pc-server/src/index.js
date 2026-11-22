@@ -71,6 +71,7 @@ app.post("/api/v1/pairing/request", async (req, reply) => {
 app.post("/api/v1/pairing/approve", async (req, reply) => {
   try {
     const result = approvePairing(String(req.body?.challengeId || ""), String(req.body?.adminCode || ""), adminCode);
+    logAdminActivity(db, "device.paired", result.deviceId);
     return reply.code(201).send(result);
   } catch (e) { return errorResponse(e, reply); }
 });
@@ -155,7 +156,10 @@ try {
   await app.listen({ host:HOST,port:PORT });
   console.log("\nBitVoid PC Server is running.");
   console.log("Local API: http://127.0.0.1:" + PORT);
-  for (const item of getLanAddresses(PORT)) console.log("LAN API (" + item.interface + "): " + item.url);
+  for (const item of getLanAddresses(PORT)) {
+    console.log("LAN API (" + item.interface + "): " + item.url);
+    console.log("Admin dashboard (" + item.interface + "): " + item.url + "/admin");
+  }
   console.log("WebSocket: ws://<PC_WIFI_IP>:" + PORT + "/api/v1/events?token=<device-token>");
   console.log("Administrator pairing code: " + adminCode);
   if (adminSetupCode) console.log("Admin dashboard first-run setup code: " + adminSetupCode);
