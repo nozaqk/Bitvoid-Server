@@ -7,8 +7,8 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node --watch src/index.js",
+    "start": "node --env-file-if-exists=.env src/index.js",
+    "dev": "node --env-file-if-exists=.env --watch src/index.js",
     "check": "node --check src/index.js && node --check src/gateway-monitor.js && node --check src/database.js && node --check src/auth.js && node --check src/admin-auth.js && node --check src/admin-routes.js && node --check dashboard/dashboard.js"
   },
   "dependencies": {
