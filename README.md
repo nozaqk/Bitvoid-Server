@@ -1,23 +1,36 @@
 # BitVoid Server
 
-Two independent projects in one repository:
+Two independent components in one repository:
 
-- `pc-server/`: Node.js 22.13+ local BitVoid application server for Windows and Linux, including the protected web administrator dashboard.
-- `esp12e-firmware/`: Arduino IDE sketch for ESP-12E / ESP8266 Wi-Fi access point and gateway discovery.
+- `pc-server/`: Node.js 22.13+ local BitVoid application server for Windows and Linux, including the protected PC administrator dashboard.
+- `esp12e-firmware/`: Arduino IDE sketch for ESP-12E / ESP8266 Wi-Fi access point, gateway discovery and its own protected gateway dashboard.
 
-## Network
+## Separate local URLs
+
+| Component | URL | Login |
+|---|---|---|
+| Main BitVoid service/API | `http://bitvoid.local:8787` | BitVoid client authentication |
+| PC server dashboard | `http://pc-server.local:8787/admin` | PC dashboard administrator account |
+| ESP gateway dashboard | `http://esp-server.local/admin` | ESP credentials in the local, untracked `config.h` |
+
+These are distinct local hostnames. The PC server advertises `bitvoid.local` and `pc-server.local` using mDNS/Bonjour; the ESP advertises `esp-server.local`. They are intended for devices on the same local network with mDNS support. IP-based fallback addresses are printed or documented for networks that block mDNS, but the dashboard URLs are the named hostnames above.
+
+The dashboards are separate: the PC dashboard manages application users, paired devices, conversations, service status and activity. The ESP dashboard manages and reports the gateway's own Wi-Fi and hardware status. The ESP dashboard does not replace the PC dashboard, and the ESP does not host the BitVoid messaging API.
+
+## Network layout
 
 ```text
-ESP-12E SoftAP (192.168.4.1)
-      |-- Windows/Linux PC running BitVoid server :8787
+ESP-12E SoftAP (192.168.4.1, esp-server.local)
+      |-- PC running BitVoid server :8787
+      |      |-- Main app/API: bitvoid.local:8787
+      |      |-- PC dashboard: pc-server.local:8787/admin
       |      |-- REST API + WebSocket messaging
       |      |-- SQLite persistence
-      |      |-- Protected admin dashboard (/admin)
       |-- Android / desktop clients
       |-- Other local Wi-Fi devices
-```
 
-The ESP-12E supplies the local Wi-Fi network. The PC hosts the application API and dashboard. The PC server prints its Wi-Fi address and the matching dashboard URL at startup. Clients connect to `http://<PC_WIFI_IP>:8787`; administrators open `http://<PC_WIFI_IP>:8787/admin`. The ESP gateway info endpoint is `http://192.168.4.1/api/v1/gateway/info`.
+ESP dashboard: http://esp-server.local/admin
+```
 
 ## Start the PC server
 
@@ -28,35 +41,39 @@ npm run check
 npm start
 ```
 
-Requires Node.js 22.13 or newer. On first start, copy the one-time dashboard setup code from the PC terminal into the dashboard, then create the administrator username and password. The dashboard includes live user sessions, paired devices, node inventory, message traffic, service status, uptime, search and activity history. See [PC server documentation](pc-server/README.md) for details.
+Requires Node.js 22.13 or newer. On first start, copy the one-time PC dashboard setup code from the PC terminal into the PC dashboard, then create the PC administrator username and password.
 
 ## Upload ESP-12E firmware
 
 1. Open `esp12e-firmware/BitVoidESP12E/BitVoidESP12E.ino` in Arduino IDE.
 2. Copy `config.example.h` to `config.h` in the same sketch folder.
-3. Set a unique SSID, strong WPA2 password, gateway ID and display name.
-4. Install the ESP8266 board package and ArduinoJson 6.x.
-5. Select your ESP-12E board/serial port and upload.
+3. Set a unique Wi-Fi SSID/password, gateway ID and display name.
+4. Set a separate ESP dashboard username and password (at least 12 characters).
+5. Install the ESP8266 board package and ArduinoJson 6.x.
+6. Select your ESP-12E board/serial port and upload.
+7. Connect to the ESP Wi-Fi and open `http://esp-server.local/admin`. If mDNS is unavailable, use `http://192.168.4.1/admin`.
 
-The ESP firmware is a Wi-Fi/discovery gateway, not the full messaging server. Default AP capacity is four clients. It does not provide internet routing.
+The ESP dashboard displays live status, connected station count, uptime, free heap, SSID, AP IP/MAC, chip ID, flash size and ESP8266 core version. The dashboard never displays the Wi-Fi password.
 
-## Current status
+## Current implementation status
 
-Implemented:
+Implemented in source:
 - PC HTTP API, gateway metadata and local SQLite persistence.
 - Time-limited device pairing and device bearer tokens.
 - User registration and direct/group messaging.
 - Authenticated WebSocket message events.
-- Protected administrator dashboard with first-run account setup, live monitoring, charts, user/device/node tables and activity log.
-- ESP-12E SoftAP, mDNS and gateway discovery/health endpoints.
+- PC administrator dashboard with first-run account setup, live monitoring, charts, user/device/node tables and activity log.
+- PC mDNS hostnames for the main service and PC dashboard.
+- ESP-12E SoftAP, mDNS hostname `esp-server.local`, gateway discovery/health endpoints.
+- Independent password-protected ESP gateway dashboard with live local hardware diagnostics.
 
 Not yet implemented or validated:
 - Full compatibility with every existing BitVoid Android backend endpoint.
 - Android client integration and automatic server discovery.
-- ESP-to-PC heartbeat telemetry (the dashboard identifies the ESP gateway but reports its live state as not reporting until heartbeat integration exists).
+- ESP-to-PC heartbeat telemetry (the PC dashboard reports the gateway as not reporting until heartbeat integration exists; the ESP's own dashboard shows its local status).
 - Media uploads/streaming, complete channels, attachments, WebRTC calls and push notifications.
 - Production-grade physical pairing, TLS and public-network hardening.
 
-This repository contains source code but has not yet been compiled on the target PC or flashed/tested on physical ESP-12E hardware. See the individual project READMEs and `docs/architecture.md`.
+This repository contains source code but has not yet been compiled on the target PC or flashed/tested on physical ESP-12E hardware. mDNS behavior depends on client OS, network multicast support and firewall configuration. See the individual project READMEs and `docs/architecture.md`.
 
 No GitHub Actions workflows are used.
