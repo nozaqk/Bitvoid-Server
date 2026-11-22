@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
+import { Bonjour } from "bonjour-service";
 import { randomUUID } from "node:crypto";
 import { getDatabase } from "./database.js";
 import { approvePairing, authenticateToken, createPairingChallenge, getOrCreateAdminCode, requireDevice, requireUser } from "./auth.js";
@@ -16,11 +17,30 @@ const SERVER_NAME = process.env.BITVOID_SERVER_NAME || "BitVoid PC Server";
 const adminCode = getOrCreateAdminCode();
 const adminSetupCode = ensureAdminSetupCode();
 const sockets = new Map();
+const bonjour = new Bonjour();
+const mdnsServices = [];
 
 await app.register(cors, { origin: true });
 await app.register(websocket);
 
 registerAdminRoutes(app, db, sockets, { name: SERVER_NAME });
+
+function advertiseLocalNames() {
+  // These are separate mDNS host records: clients use bitvoid.local for the API,
+  // while administrators use pc-server.local for the PC dashboard.
+  for (const [name, serviceName] of [["bitvoid", "BitVoid Main API"], ["pc-server", "BitVoid PC Admin Dashboard"]]) {
+    try {
+      mdnsServices.push(bonjour.publish({
+        name: serviceName,
+        type: "http",
+        port: PORT,
+        host: name + ".local"
+      }));
+    } catch (error) {
+      console.warn("[BitVoid] Could not advertise " + name + ".local:", error.message);
+    }
+  }
+}
 
 function memberOf(conversationId, userId) {
   return Boolean(db.prepare("SELECT 1 FROM conversation_members WHERE conversation_id=? AND user_id=?").get(conversationId, userId));
@@ -40,7 +60,7 @@ function errorResponse(error, reply) {
   return reply.code(status).send({ error: status >= 500 ? "internal_error" : "request_error", message: status >= 500 ? "The server could not complete the request." : error.message });
 }
 
-app.get("/", async () => ({ service: "bitvoid", name: SERVER_NAME, status: "ready", api: "/api/v1" }));
+app.get("/", async () => ({ service: "bitvoid", name: SERVER_NAME, status: "ready", api: "/api/v1", dashboard: "http://pc-server.local:" + PORT + "/admin" }));
 app.get("/health", async () => ({ ok: true, status: "ready", uptimeSeconds: Math.floor(process.uptime()) }));
 app.get("/api/v1/health", async () => ({ ok: true, status: "ready", uptimeSeconds: Math.floor(process.uptime()) }));
 app.get("/api/v1/gateway/info", async () => ({
@@ -61,7 +81,7 @@ app.get("/api/node", async (_req, reply) => {
   reply.header("X-BitVoid-Node","1").header("X-BitVoid-Protocol","2").header("X-BitVoid-Identity","local-identity-v1");
   return { service: "bitvoid", protocolVersion: 2, nodeId: "bv-pc-server", nodeType: "pc-coordinator", coordinator: true, portalAvailable: false };
 });
-app.get("/api/mesh/nodes", async () => ({ service: "bitvoid", protocolVersion: 2, nodes: [{ nodeId: "bv-pc-server", nodeType: "pc-coordinator", coordinator: true }] }));
+app.get("/api/mesh/nodes", async () => ({ service: "bitvoid", protocolVersion: 2, nodes: [{ nodeId: "bv-pc-server", nodeType: "pc-coordinator", coordinator: true }] });
 
 app.post("/api/v1/pairing/request", async (req, reply) => {
   const deviceId = String(req.body?.deviceId || "").trim();
@@ -154,19 +174,19 @@ app.setNotFoundHandler((_req,reply) => reply.code(404).send({ error:"not_found" 
 app.setErrorHandler((error,_req,reply) => errorResponse(error,reply));
 try {
   await app.listen({ host:HOST,port:PORT });
+  advertiseLocalNames();
   console.log("\nBitVoid PC Server is running.");
-  console.log("Local API: http://127.0.0.1:" + PORT);
-  for (const item of getLanAddresses(PORT)) {
-    console.log("LAN API (" + item.interface + "): " + item.url);
-    console.log("Admin dashboard (" + item.interface + "): " + item.url + "/admin");
-  }
-  console.log("WebSocket: ws://<PC_WIFI_IP>:" + PORT + "/api/v1/events?token=<device-token>");
+  console.log("Main application/API: http://bitvoid.local:" + PORT);
+  console.log("PC administrator dashboard: http://pc-server.local:" + PORT + "/admin");
+  console.log("PC fallback (local only): http://127.0.0.1:" + PORT + "/admin");
+  for (const item of getLanAddresses(PORT)) console.log("LAN fallback (" + item.interface + "): " + item.url);
+  console.log("ESP administrator dashboard: http://esp-server.local/admin");
+  console.log("WebSocket: ws://bitvoid.local:" + PORT + "/api/v1/events?token=<device-token>");
   console.log("Administrator pairing code: " + adminCode);
-  if (adminSetupCode) console.log("Admin dashboard first-run setup code: " + adminSetupCode);
-  console.log("Admin dashboard: http://127.0.0.1:" + PORT + "/admin");
-  console.log("Keep this code private. Local-network HTTP/WS only; do not expose to the public internet.\n");
+  if (adminSetupCode) console.log("PC dashboard first-run setup code: " + adminSetupCode);
+  console.log("Keep setup codes private. Local-network HTTP/WS only; do not expose to the public internet.\n");
 } catch (error) {
   console.error("Could not start BitVoid PC Server:",error);
   process.exit(1);
 }
-for (const signal of ["SIGINT","SIGTERM"]) process.on(signal,async()=>{ await app.close(); process.exit(0); });
+for (const signal of ["SIGINT","SIGTERM"]) process.on(signal,async()=>{ for (const service of mdnsServices) service.stop(); bonjour.destroy(); await app.close(); process.exit(0); });
