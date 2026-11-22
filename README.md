@@ -2,7 +2,7 @@
 
 Two independent projects in one repository:
 
-- `pc-server/`: Node.js 22+ local BitVoid application server for Windows and Linux.
+- `pc-server/`: Node.js 22.13+ local BitVoid application server for Windows and Linux.
 - `esp12e-firmware/`: Arduino IDE sketch for ESP-12E / ESP8266 Wi-Fi access point and gateway discovery.
 
 ## Network
@@ -24,7 +24,7 @@ npm install
 npm start
 ```
 
-Requires Node.js 22 or newer.
+Requires Node.js 22.13 or newer.
 
 ## Upload ESP-12E firmware
 
