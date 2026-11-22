@@ -13,6 +13,11 @@ export function getOrCreateAdminCode() {
   return code;
 }
 export function createPairingChallenge(deviceId) {
+  if (db.prepare("SELECT 1 FROM devices WHERE id=?").get(deviceId)) {
+    const error = new Error("This device is already paired. Use a new device ID or implement token rotation.");
+    error.statusCode = 409;
+    throw error;
+  }
   const id = randomUUID(), now = Date.now();
   db.prepare("INSERT INTO pairing_challenges(id,device_id,created_at,expires_at) VALUES(?,?,?,?)").run(id, deviceId, now, now + 120000);
   return { challengeId: id, expiresInSeconds: 120 };
