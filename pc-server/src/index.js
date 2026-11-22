@@ -51,7 +51,7 @@ app.get("/api/v1/services", async () => ({ services: [
   ...["discovery","health","pairing","users","direct-messaging","groups","websocket-events"].map(id => ({ id, available: true })),
   { id: "media", available: false }, { id: "webrtc", available: false }
 ]}));
-app.get("/api/v1/devices", async () => ({ devices: db.prepare("SELECT id,created_at AS createdAt,last_seen AS lastSeen FROM devices ORDER BY created_at").all() }));
+app.get("/api/v1/devices", { preHandler: requireDevice }, async () => ({ devices: db.prepare("SELECT id,created_at AS createdAt,last_seen AS lastSeen FROM devices ORDER BY created_at").all() }));
 app.get("/api/node", async (_req, reply) => {
   reply.header("X-BitVoid-Node","1").header("X-BitVoid-Protocol","2").header("X-BitVoid-Identity","local-identity-v1");
   return { service: "bitvoid", protocolVersion: 2, nodeId: "bv-pc-server", nodeType: "pc-coordinator", coordinator: true, portalAvailable: false };
