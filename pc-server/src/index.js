@@ -17,7 +17,7 @@ const SERVER_NAME = process.env.BITVOID_SERVER_NAME || "BitVoid PC Server";
 const adminCode = getOrCreateAdminCode();
 const adminSetupCode = ensureAdminSetupCode();
 const sockets = new Map();
-const bonjour = new Bonjour();
+const bonjour = new Bonjour({}, error => console.warn("[BitVoid] mDNS responder warning:", error.message));
 const mdnsServices = [];
 
 await app.register(cors, { origin: true });
@@ -81,7 +81,7 @@ app.get("/api/node", async (_req, reply) => {
   reply.header("X-BitVoid-Node","1").header("X-BitVoid-Protocol","2").header("X-BitVoid-Identity","local-identity-v1");
   return { service: "bitvoid", protocolVersion: 2, nodeId: "bv-pc-server", nodeType: "pc-coordinator", coordinator: true, portalAvailable: false };
 });
-app.get("/api/mesh/nodes", async () => ({ service: "bitvoid", protocolVersion: 2, nodes: [{ nodeId: "bv-pc-server", nodeType: "pc-coordinator", coordinator: true }] });
+app.get("/api/mesh/nodes", async () => ({ service: "bitvoid", protocolVersion: 2, nodes: [{ nodeId: "bv-pc-server", nodeType: "pc-coordinator", coordinator: true }] }));
 
 app.post("/api/v1/pairing/request", async (req, reply) => {
   const deviceId = String(req.body?.deviceId || "").trim();
