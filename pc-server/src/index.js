@@ -8,6 +8,7 @@ import { approvePairing, authenticateToken, createPairingChallenge, getOrCreateA
 import { getLanAddresses } from "./network.js";
 import { ensureAdminSetupCode } from "./admin-auth.js";
 import { registerAdminRoutes, logAdminActivity } from "./admin-routes.js";
+import { createGatewayMonitor } from "./gateway-monitor.js";
 
 const app = Fastify({ logger: false, bodyLimit: 1024 * 1024 });
 const db = getDatabase();
@@ -19,11 +20,13 @@ const adminSetupCode = ensureAdminSetupCode();
 const sockets = new Map();
 const bonjour = new Bonjour({}, error => console.warn("[BitVoid] mDNS responder warning:", error.message));
 const mdnsServices = [];
+const gatewayMonitor = createGatewayMonitor();
+gatewayMonitor.start();
 
 await app.register(cors, { origin: true });
 await app.register(websocket);
 
-registerAdminRoutes(app, db, sockets, { name: SERVER_NAME });
+registerAdminRoutes(app, db, sockets, { name: SERVER_NAME, gatewayMonitor });
 
 function advertiseLocalNames() {
   // These are separate mDNS host records: clients use bitvoid.local for the API,
@@ -189,4 +192,4 @@ try {
   console.error("Could not start BitVoid PC Server:",error);
   process.exit(1);
 }
-for (const signal of ["SIGINT","SIGTERM"]) process.on(signal,async()=>{ for (const service of mdnsServices) service.stop(); bonjour.destroy(); await app.close(); process.exit(0); });
+for (const signal of ["SIGINT","SIGTERM"]) process.on(signal,async()=>{ gatewayMonitor.stop(); for (const service of mdnsServices) service.stop(); bonjour.destroy(); await app.close(); process.exit(0); });
