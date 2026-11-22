@@ -1,6 +1,6 @@
 # BitVoid PC Server
 
-Node.js 22+ server for Windows and Linux.
+Node.js 22.13+ server for Windows and Linux.
 
 ## Install and run
 
@@ -86,4 +86,4 @@ If Windows Firewall prompts for Node.js, allow it on Private networks only. Do n
 
 This is the first standalone server milestone. It provides pairing bootstrap, user registration, persisted conversations/messages and WebSocket delivery. It does not yet implement all legacy Android-hosted server routes, complete channel semantics, media uploads/streaming, file attachments, WebRTC signaling/audio, push notifications or automatic Android gateway discovery. It is not yet a drop-in replacement for the full Android backend.
 
-Node's built-in `node:sqlite` requires Node.js 22+. Some Node releases print an experimental warning.
+Node's built-in `node:sqlite` requires Node.js 22.13+. Some Node releases print an experimental warning.
