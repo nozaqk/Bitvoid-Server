@@ -34,6 +34,8 @@ ESP dashboard: http://esp-server.local/admin
 
 ## Start the PC server
 
+Before starting, copy pc-server/.env.example to pc-server/.env and set the ESP dashboard username/password to match the ESP local config.h. The PC server uses these credentials for authenticated gateway health polling. Keep both configuration files private; neither should be committed.
+
 ```bash
 cd pc-server
 npm install
@@ -70,7 +72,7 @@ Implemented in source:
 Not yet implemented or validated:
 - Full compatibility with every existing BitVoid Android backend endpoint.
 - Android client integration and automatic server discovery.
-- ESP-to-PC heartbeat telemetry (the PC dashboard reports the gateway as not reporting until heartbeat integration exists; the ESP's own dashboard shows its local status).
+- Authenticated ESP-to-PC gateway health polling every 10 seconds, with online/offline state, latency, last-seen time and hardware telemetry in the PC dashboard. Requires matching credentials in PC .env and ESP config.h.
 - Media uploads/streaming, complete channels, attachments, WebRTC calls and push notifications.
 - Production-grade physical pairing, TLS and public-network hardening.
 
