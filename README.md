@@ -13,7 +13,7 @@ Two independent components in one repository:
 | PC server dashboard | `http://pc-server.local:8787/admin` | PC dashboard administrator account |
 | ESP gateway dashboard | `http://esp-server.local/admin` | ESP credentials in the local, untracked `config.h` |
 
-These are distinct local hostnames. The PC server advertises `bitvoid.local` and `pc-server.local` using mDNS/Bonjour; the ESP advertises `esp-server.local`. They are intended for devices on the same local network with mDNS support. IP-based fallback addresses are printed or documented for networks that block mDNS, but the dashboard URLs are the named hostnames above.
+These are distinct local hostnames. The PC server advertises `bitvoid.local` and `pc-server.local` using mDNS/Bonjour; the ESP advertises `esp-server.local`. They are intended for devices on the same local network with mDNS support. If mDNS is unavailable, use the PC LAN IP printed at startup or the ESP fallback `http://192.168.4.1/admin`.
 
 The dashboards are separate: the PC dashboard manages application users, paired devices, conversations, service status and activity. The ESP dashboard manages and reports the gateway's own Wi-Fi and hardware status. The ESP dashboard does not replace the PC dashboard, and the ESP does not host the BitVoid messaging API.
 
@@ -26,6 +26,7 @@ ESP-12E SoftAP (192.168.4.1, esp-server.local)
       |      |-- PC dashboard: pc-server.local:8787/admin
       |      |-- REST API + WebSocket messaging
       |      |-- SQLite persistence
+      |      |-- Authenticated ESP heartbeat polling
       |-- Android / desktop clients
       |-- Other local Wi-Fi devices
 
@@ -34,7 +35,7 @@ ESP dashboard: http://esp-server.local/admin
 
 ## Start the PC server
 
-Before starting, copy pc-server/.env.example to pc-server/.env and set the ESP dashboard username/password to match the ESP local config.h. The PC server uses these credentials for authenticated gateway health polling. Keep both configuration files private; neither should be committed.
+Before starting, copy `pc-server/.env.example` to `pc-server/.env` and set the ESP dashboard username/password to match the ESP local `config.h`. The PC server uses these credentials for authenticated gateway health polling. Keep both configuration files private; neither should be committed.
 
 ```bash
 cd pc-server
@@ -68,14 +69,15 @@ Implemented in source:
 - PC mDNS hostnames for the main service and PC dashboard.
 - ESP-12E SoftAP, mDNS hostname `esp-server.local`, gateway discovery/health endpoints.
 - Independent password-protected ESP gateway dashboard with live local hardware diagnostics.
+- Authenticated PC-to-ESP gateway health polling every 10 seconds, including online/offline state, last check/last seen, latency and gateway hardware/network telemetry. The PC monitor uses HTTP Basic Authentication and does not return the ESP password to the dashboard client.
 
 Not yet implemented or validated:
 - Full compatibility with every existing BitVoid Android backend endpoint.
 - Android client integration and automatic server discovery.
-- Authenticated ESP-to-PC gateway health polling every 10 seconds, with online/offline state, latency, last-seen time and hardware telemetry in the PC dashboard. Requires matching credentials in PC .env and ESP config.h.
 - Media uploads/streaming, complete channels, attachments, WebRTC calls and push notifications.
 - Production-grade physical pairing, TLS and public-network hardening.
+- End-to-end validation on the target Windows PC and a physical ESP-12E, including Arduino compilation/flashing, mDNS resolution and a live PC-to-ESP heartbeat.
 
-This repository contains source code but has not yet been compiled on the target PC or flashed/tested on physical ESP-12E hardware. mDNS behavior depends on client OS, network multicast support and firewall configuration. See the individual project READMEs and `docs/architecture.md`.
+The source has not yet been verified on the target PC or flashed/tested on physical ESP-12E hardware. mDNS behavior depends on client OS, network multicast support and firewall configuration. See the individual project READMEs and `docs/architecture.md`.
 
 No GitHub Actions workflows are used.
