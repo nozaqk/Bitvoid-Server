@@ -12,7 +12,7 @@
 | PC administration | `http://pc-server.local:8787/admin` | PC application server operations and user/device monitoring |
 | ESP gateway administration | `http://esp-server.local/admin` | ESP-12E Wi-Fi gateway diagnostics and settings |
 
-The PC server advertises `bitvoid.local` and `pc-server.local` using Bonjour/mDNS. The ESP8266 firmware advertises `esp-server.local`. The names are independent hostnames, not path aliases. The PC dashboard uses the PC server's own administrator account; the ESP dashboard uses separate credentials stored in the local, untracked firmware `config.h`.
+The PC server advertises `bitvoid.local` and `pc-server.local` using Bonjour/mDNS. It also polls the ESP protected `/admin/api/status` endpoint every 10 seconds using credentials in its local `.env`; the PC dashboard reports online/offline state and returned hardware/network telemetry. The ESP8266 firmware advertises `esp-server.local`. The names are independent hostnames, not path aliases. The PC dashboard uses the PC server's own administrator account; the ESP dashboard uses separate credentials stored in the local, untracked firmware `config.h`.
 
 mDNS requires clients to support multicast DNS and be on the same local network. If name resolution is unavailable, the ESP AP is reachable at `192.168.4.1`, and the PC server prints its current LAN IP fallback at startup.
 

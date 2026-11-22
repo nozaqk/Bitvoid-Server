@@ -18,6 +18,8 @@ The PC dashboard is deliberately not the main application URL. It is served at t
 
 ```bash
 cd pc-server
+copy .env.example .env
+# Edit .env and enter the ESP dashboard username/password
 npm install
 npm run check
 npm start
@@ -41,7 +43,7 @@ The dashboard uses an HttpOnly, SameSite=Strict session cookie, in-memory 12-hou
 - Search for users and paired devices.
 - Responsive dark interface for desktop and mobile screens.
 
-Online means a user currently has an authenticated WebSocket connection to the PC server. The ESP-12E appears as a known gateway component, but its live health in the PC dashboard is reported as "not reporting" until gateway heartbeat integration exists. The ESP's own dashboard displays live hardware values locally.
+Online means a user currently has an authenticated WebSocket connection to the PC server. The PC server polls the ESP protected /admin/api/status endpoint every 10 seconds using HTTP Basic Authentication. Set BITVOID_GATEWAY_URL, BITVOID_GATEWAY_ADMIN_USERNAME and BITVOID_GATEWAY_ADMIN_PASSWORD in .env; credentials must match the ESP firmware config.h. The PC dashboard then displays actual online/offline status, last check/last seen, response latency, connected clients, uptime, free heap, SSID, MAC and firmware core version. Missing credentials are reported as Not configured; unreachable ESP or rejected credentials are reported as Offline with a diagnostic. The ESP admin password is never returned by the PC dashboard API.
 
 ## Pair a device
 
@@ -88,6 +90,16 @@ The response contains a device-scoped bearer token. Store it securely on the cli
 | GET | `/api/v1/conversations/:id/messages` | Read history |
 | POST | `/api/v1/conversations/:id/messages` | Send a message |
 | WS | `/api/v1/events?token=...` | Authenticated real-time events |
+
+## ESP gateway heartbeat configuration
+
+1. On the ESP, set BITVOID_ADMIN_USERNAME and BITVOID_ADMIN_PASSWORD in its local config.h.
+2. In pc-server/, copy .env.example to .env.
+3. Set BITVOID_GATEWAY_URL=http://192.168.4.1 and enter the exact ESP dashboard username/password in BITVOID_GATEWAY_ADMIN_USERNAME and BITVOID_GATEWAY_ADMIN_PASSWORD.
+4. Keep .env private; it is ignored by Git. Never commit the credentials.
+5. Restart the PC server. It checks the gateway immediately and then every 10 seconds.
+
+The monitor uses a 3-second request timeout. The PC must be connected to the ESP access point and able to reach 192.168.4.1. It polls only the protected, read-only status endpoint; it cannot change ESP settings or reboot the gateway.
 
 ## ESP-12E network
 
