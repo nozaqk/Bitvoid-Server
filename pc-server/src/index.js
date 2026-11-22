@@ -42,7 +42,7 @@ app.get("/api/v1/gateway/info", async () => ({
   service: "bitvoid", gatewayId: "bv-pc-server", displayName: SERVER_NAME,
   hardware: { family: "computer", model: process.platform },
   protocol: { name: "bitvoid-gateway", major: 1, minor: 0 },
-  identity: { mode: "local-server-v1", verified: true },
+  identity: { mode: "local-server-v1", verified: false },
   capabilities: ["discovery","health","pairing","users","direct-messaging","groups","websocket-events"],
   limits: { maxClients: 100 },
   links: { health: "/api/v1/health", services: "/api/v1/services", events: "/api/v1/events" }
