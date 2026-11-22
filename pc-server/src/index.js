@@ -146,12 +146,12 @@ app.setNotFoundHandler((_req,reply) => reply.code(404).send({ error:"not_found" 
 app.setErrorHandler((error,_req,reply) => errorResponse(error,reply));
 try {
   await app.listen({ host:HOST,port:PORT });
-  console.log("\\nBitVoid PC Server is running.");
+  console.log("\nBitVoid PC Server is running.");
   console.log("Local API: http://127.0.0.1:" + PORT);
   for (const item of getLanAddresses(PORT)) console.log("LAN API (" + item.interface + "): " + item.url);
   console.log("WebSocket: ws://<PC_WIFI_IP>:" + PORT + "/api/v1/events?token=<device-token>");
   console.log("Administrator pairing code: " + adminCode);
-  console.log("Keep this code private. Local-network HTTP/WS only; do not expose to the public internet.\\n");
+  console.log("Keep this code private. Local-network HTTP/WS only; do not expose to the public internet.\n");
 } catch (error) {
   console.error("Could not start BitVoid PC Server:",error);
   process.exit(1);
