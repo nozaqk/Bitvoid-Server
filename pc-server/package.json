@@ -1,9 +1,9 @@
 {
   "name": "bitvoid-pc-server",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "engines": { "node": ">=22.13.0" },
-  "scripts": { "start": "node src/index.js", "dev": "node --watch src/index.js", "check": "node --check src/index.js && node --check src/database.js && node --check src/auth.js" },
+  "scripts": { "start": "node src/index.js", "dev": "node --watch src/index.js", "check": "node --check src/index.js && node --check src/database.js && node --check src/auth.js && node --check src/admin-auth.js && node --check src/admin-routes.js && node --check dashboard/dashboard.js" },
   "dependencies": { "@fastify/cors": "^10.0.2", "@fastify/websocket": "^11.0.1", "fastify": "^5.2.1" }
 }

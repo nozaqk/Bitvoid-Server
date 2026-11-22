@@ -5,6 +5,8 @@ import { randomUUID } from "node:crypto";
 import { getDatabase } from "./database.js";
 import { approvePairing, authenticateToken, createPairingChallenge, getOrCreateAdminCode, requireDevice, requireUser } from "./auth.js";
 import { getLanAddresses } from "./network.js";
+import { ensureAdminSetupCode } from "./admin-auth.js";
+import { registerAdminRoutes, logAdminActivity } from "./admin-routes.js";
 
 const app = Fastify({ logger: false, bodyLimit: 1024 * 1024 });
 const db = getDatabase();
@@ -12,10 +14,13 @@ const PORT = Number(process.env.PORT || 8787);
 const HOST = process.env.HOST || "0.0.0.0";
 const SERVER_NAME = process.env.BITVOID_SERVER_NAME || "BitVoid PC Server";
 const adminCode = getOrCreateAdminCode();
+const adminSetupCode = ensureAdminSetupCode();
 const sockets = new Map();
 
 await app.register(cors, { origin: true });
 await app.register(websocket);
+
+registerAdminRoutes(app, db, sockets, { name: SERVER_NAME });
 
 function memberOf(conversationId, userId) {
   return Boolean(db.prepare("SELECT 1 FROM conversation_members WHERE conversation_id=? AND user_id=?").get(conversationId, userId));
@@ -66,6 +71,7 @@ app.post("/api/v1/pairing/request", async (req, reply) => {
 app.post("/api/v1/pairing/approve", async (req, reply) => {
   try {
     const result = approvePairing(String(req.body?.challengeId || ""), String(req.body?.adminCode || ""), adminCode);
+    logAdminActivity(db, "device.paired", result.deviceId);
     return reply.code(201).send(result);
   } catch (e) { return errorResponse(e, reply); }
 });
@@ -76,6 +82,7 @@ app.post("/api/v1/users/register", { preHandler: requireDevice }, async (req, re
   const id = randomUUID();
   try {
     db.prepare("INSERT INTO users(id,username,device_id,created_at) VALUES(?,?,?,?)").run(id, username, req.device.id, new Date().toISOString());
+    logAdminActivity(db, "user.registered", username);
     return reply.code(201).send({ userId: id, username });
   } catch { return reply.code(409).send({ error: "username_unavailable" }); }
 });
@@ -120,6 +127,7 @@ app.post("/api/v1/conversations/:id/messages", { preHandler: requireUser }, asyn
   const message = { id:randomUUID(),conversationId:req.params.id,senderId:req.user.id,sender:req.user.username,body,createdAt:new Date().toISOString() };
   db.prepare("INSERT INTO messages(id,conversation_id,sender_id,body,created_at) VALUES(?,?,?,?,?)").run(message.id,message.conversationId,message.senderId,body,message.createdAt);
   sendToConversation(message.conversationId,{ type:"message.created",data:message });
+  logAdminActivity(db, "message.sent", "Message from " + message.sender + " in conversation " + message.conversationId);
   return reply.code(201).send(message);
 });
 
@@ -148,9 +156,14 @@ try {
   await app.listen({ host:HOST,port:PORT });
   console.log("\nBitVoid PC Server is running.");
   console.log("Local API: http://127.0.0.1:" + PORT);
-  for (const item of getLanAddresses(PORT)) console.log("LAN API (" + item.interface + "): " + item.url);
+  for (const item of getLanAddresses(PORT)) {
+    console.log("LAN API (" + item.interface + "): " + item.url);
+    console.log("Admin dashboard (" + item.interface + "): " + item.url + "/admin");
+  }
   console.log("WebSocket: ws://<PC_WIFI_IP>:" + PORT + "/api/v1/events?token=<device-token>");
   console.log("Administrator pairing code: " + adminCode);
+  if (adminSetupCode) console.log("Admin dashboard first-run setup code: " + adminSetupCode);
+  console.log("Admin dashboard: http://127.0.0.1:" + PORT + "/admin");
   console.log("Keep this code private. Local-network HTTP/WS only; do not expose to the public internet.\n");
 } catch (error) {
   console.error("Could not start BitVoid PC Server:",error);

@@ -1,24 +1,48 @@
 # BitVoid PC Server
 
-Node.js 22.13+ server for Windows and Linux.
+Node.js 22.13+ server for Windows and Linux. It hosts the BitVoid API, local SQLite database, WebSocket messaging, and the protected web-based administrator dashboard.
 
 ## Install and run
 
 ```bash
+cd pc-server
 npm install
+npm run check
 npm start
 ```
 
 Windows PowerShell:
 
 ```powershell
+cd pc-server
 npm install
+npm run check
 npm start
 ```
 
-The first start creates `.state/bitvoid.sqlite` and `.state/admin-pairing-code.txt`. The pairing code is printed to the terminal. Keep `.state/` private and never commit it.
+Open the dashboard from the PC at `http://127.0.0.1:8787/admin`, or from another device connected to the same private Wi-Fi network at `http://<PC_WIFI_IP>:8787/admin`.
 
-The server defaults to `0.0.0.0:8787`. Optional variables are documented in `.env.example`; set them in your shell before starting Node.
+### First-run administrator setup
+
+On the first start, the server creates a one-time dashboard setup code in `.state/admin-setup-code.txt` and prints it in the PC terminal. Open the dashboard, enter that code, choose an administrator username, and create a password of at least 12 characters. The setup code is deleted after successful setup. Keep the `.state/` directory private.
+
+The dashboard uses an HttpOnly, SameSite=Strict session cookie, in-memory 12-hour sessions, password hashing with Node's scrypt, and basic login-attempt throttling. Restarting the server ends all dashboard sessions. Do not expose this HTTP dashboard to the public internet; it is intended for a trusted local network. Add TLS and stronger operational controls before remote/public deployment.
+
+## Dashboard features
+
+- Password-protected administrator sign-in and first-run setup.
+- Overview cards for registered users, live connected users, paired devices and known nodes.
+- Live dashboard refresh every five seconds.
+- 24-hour message traffic chart.
+- Service health and server uptime/runtime information.
+- User table with online/offline status, IDs and registration time.
+- Paired device table with assigned username and last-seen information.
+- Network node view for the PC coordinator and ESP-12E gateway.
+- Recent activity feed and activity log.
+- Search for users and paired devices.
+- Responsive dark interface for desktop and mobile screens.
+
+Online means a user currently has an authenticated WebSocket connection to the PC server. The ESP-12E appears as a known gateway component, but its live health is reported as "not reporting" until a gateway heartbeat is implemented/configured. The dashboard does not infer ESP health from the PC process.
 
 ## Pair a device
 
@@ -31,7 +55,7 @@ Content-Type: application/json
 {"deviceId":"android-phone-01"}
 ```
 
-Approve it using the one-time administrator code printed in the PC terminal:
+Approve it using the one-time administrator pairing code printed in the PC terminal:
 
 ```http
 POST /api/v1/pairing/approve
@@ -56,6 +80,12 @@ Content-Type: application/json
 
 | Method | Path | Purpose |
 |---|---|---|
+| GET | `/admin` | Protected administrator dashboard |
+| GET | `/admin/api/overview` | Dashboard metrics (admin session required) |
+| GET | `/admin/api/users` | User list (admin session required) |
+| GET | `/admin/api/devices` | Paired devices (admin session required) |
+| GET | `/admin/api/nodes` | Known network nodes (admin session required) |
+| GET | `/admin/api/activity` | Activity log (admin session required) |
 | GET | `/api/v1/gateway/info` | Gateway metadata |
 | GET | `/api/v1/health` | Health and uptime |
 | GET | `/api/v1/services` | Capability list |
@@ -70,20 +100,22 @@ Content-Type: application/json
 | POST | `/api/v1/conversations/:id/messages` | Send a message |
 | WS | `/api/v1/events?token=...` | Authenticated real-time events |
 
-WebSocket message events are sent only to connected members of the conversation. Send `{"type":"ping"}` to receive a pong.
-
 ## ESP-12E network
 
 1. Flash the sibling `esp12e-firmware/` sketch.
 2. Connect the PC to the ESP-12E SSID.
 3. Start this server.
-4. Use the PC Wi-Fi IP printed at startup, e.g. `http://192.168.4.2:8787`. The exact IP is assigned by DHCP and may differ.
+4. Use the PC Wi-Fi IP printed at startup, e.g. `http://192.168.4.2:8787/admin`. The exact IP is assigned by DHCP and may differ.
 5. Connect phones to the same Wi-Fi and use the PC URL.
 
 If Windows Firewall prompts for Node.js, allow it on Private networks only. Do not create a public-network exception.
 
-## Limitations
+## Limitations and security notes
 
-This is the first standalone server milestone. It provides pairing bootstrap, user registration, persisted conversations/messages and WebSocket delivery. It does not yet implement all legacy Android-hosted server routes, complete channel semantics, media uploads/streaming, file attachments, WebRTC signaling/audio, push notifications or automatic Android gateway discovery. It is not yet a drop-in replacement for the full Android backend.
+This remains the first standalone server milestone. It does not yet implement all legacy Android-hosted server routes, complete channel semantics, media uploads/streaming, file attachments, WebRTC signaling/audio, push notifications or automatic Android gateway discovery. It is not yet a drop-in replacement for the full Android backend.
 
-Node's built-in `node:sqlite` requires Node.js 22.13+. Some Node releases print an experimental warning.
+The dashboard's ESP-12E state is inventory/configuration only until the firmware reports heartbeats to the PC. Admin sessions are stored in memory and expire after 12 hours. HTTP and WebSocket traffic are unencrypted on the local network. Do not expose this service to the public internet.
+
+Node's built-in `node:sqlite` requires Node.js 22.13+. Some Node releases print an experimental warning. Source has not been compiled on the target PC or flashed/tested on physical ESP-12E hardware.
+
+No GitHub Actions workflows are used.
