@@ -69,6 +69,12 @@ async function migrate() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS sync_events_owner_sequence_idx ON sync_events(owner_id, sequence);
+    CREATE TABLE IF NOT EXISTS campus_identity_links (
+      node_id TEXT NOT NULL, local_user_id TEXT NOT NULL,
+      account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+      linked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY(node_id,local_user_id), UNIQUE(node_id,account_id)
+    );
   `);
 }
 function fail(statusCode, message, code = "request_error") {
@@ -174,6 +180,20 @@ app.post("/api/v1/auth/login", async (req, reply) => {
   return { account:{ id:account.id,email:account.email,username:account.username,status:account.status }, token:signToken(account), tokenType:"Bearer", expiresIn:TOKEN_TTL_SECONDS };
 });
 app.get("/api/v1/auth/me", { preHandler: requireAccount }, async req => ({ account:req.account }));
+
+app.post("/api/v1/sync/link-profile", { preHandler: requireAccount }, async (req,reply) => {
+  const nodeId=String(req.body?.nodeId||"").trim();
+  const localUserId=String(req.body?.localUserId||"").trim();
+  if(!/^[a-zA-Z0-9._:-]{3,80}$/.test(nodeId) || !/^[0-9a-f-]{36}$/i.test(localUserId))
+    fail(400,"A valid campus node and local profile ID are required.","invalid_profile_link");
+  try {
+    await pool.query("INSERT INTO campus_identity_links(node_id,local_user_id,account_id) VALUES($1,$2,$3) ON CONFLICT(node_id,local_user_id) DO UPDATE SET account_id=EXCLUDED.account_id,linked_at=NOW()",[nodeId,localUserId,req.account.id]);
+  } catch(error) {
+    if(error.code==="23505") fail(409,"This cloud account is already linked to another profile on this campus node.","profile_already_linked");
+    throw error;
+  }
+  return reply.send({ok:true,nodeId,localUserId,account:{id:req.account.id,username:req.account.username},identityStatus:"linked"});
+});
 
 app.get("/api/v1/conversations", { preHandler: requireAccount }, async req => {
   const result = await pool.query(`
@@ -286,10 +306,12 @@ app.post("/api/v1/sync/push", { preHandler: requireSyncNode }, async (req, reply
 });
 app.get("/api/v1/sync/pull", { preHandler: requireSyncNode }, async req => {
   const after = Math.max(0,Number(req.query.after)||0);
+  const nodeId=String(req.query.nodeId||"").trim();
+  if(!/^[a-zA-Z0-9._:-]{3,80}$/.test(nodeId)) fail(400,"A valid nodeId is required.","invalid_node");
   const limit = Math.min(500,Math.max(1,Number(req.query.limit)||200));
   const result = await pool.query(
-    "SELECT sequence,event_id AS \"eventId\",source_node AS \"sourceNode\",owner_id AS \"ownerId\",entity_type AS \"entityType\",entity_id AS \"entityId\",revision,payload,created_at AS \"createdAt\" FROM sync_events WHERE sequence>$1 ORDER BY sequence ASC LIMIT $2",
-    [after,limit]
+    "SELECT sequence,event_id AS \"eventId\",source_node AS \"sourceNode\",owner_id AS \"ownerId\",entity_type AS \"entityType\",entity_id AS \"entityId\",revision,payload,created_at AS \"createdAt\" FROM sync_events WHERE sequence>$1 AND owner_id IN (SELECT account_id FROM campus_identity_links WHERE node_id=$2) ORDER BY sequence ASC LIMIT $3",
+    [after,nodeId,limit]
   );
   return { events:result.rows, nextCursor:result.rows.at(-1)?.sequence || after, hasMore:result.rowCount===limit };
 });
