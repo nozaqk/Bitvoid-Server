@@ -81,3 +81,14 @@ Not yet implemented or validated:
 The source has not yet been verified on the target PC or flashed/tested on physical ESP-12E hardware. mDNS behavior depends on client OS, network multicast support and firewall configuration. See the individual project READMEs and `docs/architecture.md`.
 
 No GitHub Actions workflows are used.
+
+
+## Cloud and online browser access (new foundation)
+
+The `cloud-server/` directory contains the Render cloud API and PostgreSQL schema/migrations. The `web-frontend/` directory contains a separate responsive browser client for cloud registration, sign-in, direct/group conversation setup and text messages. `render.yaml` describes the cloud API, online static frontend and managed PostgreSQL database.
+
+The campus PC server now has a durable sync outbox/inbox transport worker. Local profile creation, conversations and messages are queued as credential-free events. The worker retries cloud pushes, uses idempotent event IDs, pulls remote events by a persistent cursor, and stores received events in the local inbox. Local-only profiles are explicitly marked pending cloud link. Passwords, hashes and bearer tokens are not synchronized.
+
+**Important:** this is the first cloud/sync foundation, not a completed end-to-end sync release. Incoming events are safely persisted but are not yet applied to local users/conversations/messages; account linking, conflict resolution, tombstone handling and full bidirectional entity reconciliation remain to be implemented. The web client currently provides text messaging only. WebRTC audio calls and real-time browser push are not implemented.
+
+See [docs/cloud-and-sync.md](docs/cloud-and-sync.md) for the event contract, identity rules, deployment notes and remaining work. No GitHub Actions workflows are used.
