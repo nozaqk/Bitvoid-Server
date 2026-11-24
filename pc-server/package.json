@@ -9,7 +9,7 @@
   "scripts": {
     "start": "node --env-file-if-exists=.env src/index.js",
     "dev": "node --env-file-if-exists=.env --watch src/index.js",
-    "check": "node --check src/index.js && node --check src/gateway-monitor.js && node --check src/database.js && node --check src/auth.js && node --check src/admin-auth.js && node --check src/admin-routes.js && node --check dashboard/dashboard.js"
+    "check": "node --check src/index.js && node --check src/cloud-sync.js && node --check src/client-routes.js && node --check client/client.js && node --check src/gateway-monitor.js && node --check src/database.js && node --check src/auth.js && node --check src/admin-auth.js && node --check src/admin-routes.js && node --check dashboard/dashboard.js"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.2",
