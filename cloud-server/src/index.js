@@ -181,7 +181,7 @@ app.post("/api/v1/auth/login", async (req, reply) => {
 });
 app.get("/api/v1/auth/me", { preHandler: requireAccount }, async req => ({ account:req.account }));
 
-app.post("/api/v1/sync/link-profile", { preHandler: requireAccount }, async (req,reply) => {
+app.post("/api/v1/sync/link-profile", { preHandler: [requireSyncNode,requireAccount] }, async (req,reply) => {
   const nodeId=String(req.body?.nodeId||"").trim();
   const localUserId=String(req.body?.localUserId||"").trim();
   if(!/^[a-zA-Z0-9._:-]{3,80}$/.test(nodeId) || !/^[0-9a-f-]{36}$/i.test(localUserId))
