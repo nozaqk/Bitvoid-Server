@@ -21,6 +21,9 @@ export function createCloudSync(db, options = {}) {
     CREATE TABLE IF NOT EXISTS sync_state(key TEXT PRIMARY KEY,value TEXT NOT NULL);
   `);
 
+  const inboxColumns=db.prepare("PRAGMA table_info(sync_inbox)").all();
+  if(!inboxColumns.some(column=>column.name==="applied_at")) db.exec("ALTER TABLE sync_inbox ADD COLUMN applied_at TEXT");
+
   function enqueue(entityType, entityId, payload, revision = 1) {
     const eventId = randomUUID();
     db.prepare("INSERT INTO sync_outbox(event_id,entity_type,entity_id,revision,payload,created_at) VALUES(?,?,?,?,?,?)")
