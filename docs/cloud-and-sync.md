@@ -11,7 +11,7 @@ The Render blueprint at repository root creates the cloud API, static frontend a
 
 ## Identity and credentials
 
-Cloud accounts are globally authoritative. Cloud registration requires a verified-quality email format, unique username and a password of at least 12 characters. Passwords are salted and hashed with scrypt. Cloud-issued access tokens are not sync events. A campus-only registration must be represented as a pending local profile and must not be represented as a globally active account until cloud registration succeeds. Never upload plaintext passwords, password hashes, salts, access tokens or refresh tokens in sync payloads. The local service must not silently claim that an offline account is usable outside campus.
+Cloud accounts are globally authoritative. Cloud registration currently checks email syntax, requires a unique username and a password of at least 12 characters. Email ownership verification is not implemented yet; do not treat an account as email-verified. Passwords are salted and hashed with scrypt. Cloud-issued access tokens are not sync events. A campus-only registration must be represented as a pending local profile and must not be represented as a globally active account until cloud registration succeeds. Never upload plaintext passwords, password hashes, salts, access tokens or refresh tokens in sync payloads. The local service must not silently claim that an offline account is usable outside campus.
 
 ## Event protocol
 
@@ -24,7 +24,7 @@ Each event has:
 - `payload`: JSON object, never credentials.
 - `sequence`: cloud-assigned append-only cursor.
 
-Campus nodes authenticate with `X-BitVoid-Sync-Secret`. The cloud push endpoint accepts up to 250 events per request and deduplicates repeated event IDs. Pull requests use an exclusive numeric cursor and return ordered events. The campus client persists received events and a cloud cursor transactionally, then applies events in a separate idempotent local transaction. Events that depend on an identity not yet linked remain pending and are retried after account linking. Retries are safe because event IDs are idempotent.
+Campus nodes authenticate with `X-BitVoid-Sync-Secret`. Profile linking requires both a signed-in cloud account and the same shared campus-node secret. The cloud push endpoint accepts up to 250 events per request and deduplicates repeated event IDs. Pull requests use an exclusive numeric cursor and return ordered events. The campus client persists received events and a cloud cursor transactionally, then applies events in a separate idempotent local transaction. Events that depend on an identity not yet linked remain pending and are retried after account linking. Retries are safe because event IDs are idempotent.
 
 ## Conflict and deletion rules
 
