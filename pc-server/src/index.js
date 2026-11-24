@@ -117,6 +117,33 @@ app.post("/api/v1/users/register", { preHandler: requireDevice }, async (req, re
 });
 app.get("/api/v1/me", { preHandler: requireDevice }, async req => ({ device: req.device, user: userForDevice(req.device.id) || null }));
 
+app.post("/api/v1/cloud/link", { preHandler: requireUser }, async (req,reply) => {
+  const email=String(req.body?.email||"").trim().toLowerCase();
+  const password=String(req.body?.password||"");
+  const cloudUrl=String(process.env.BITVOID_CLOUD_SYNC_URL||"").replace(/\\/$/,"");
+  if(!cloudUrl) return reply.code(503).send({error:"cloud_not_configured",message:"Cloud linking is not configured on this campus server."});
+  try {
+    const login=await fetch(cloudUrl+"/api/v1/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password}),signal:AbortSignal.timeout(12000)});
+    const auth=await login.json().catch(()=>({}));
+    if(!login.ok) return reply.code(401).send({error:"cloud_login_failed",message:auth.message||"Cloud sign-in failed."});
+    const nodeId=process.env.BITVOID_CLOUD_NODE_ID||"bitvoid-campus-node";
+    const linked=await fetch(cloudUrl+"/api/v1/sync/link-profile",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+auth.token},body:JSON.stringify({nodeId,localUserId:req.user.id}),signal:AbortSignal.timeout(12000)});
+    const result=await linked.json().catch(()=>({}));
+    if(!linked.ok) return reply.code(linked.status).send(result);
+    db.prepare("INSERT INTO cloud_identity_links(local_user_id,cloud_account_id,linked_at) VALUES(?,?,?) ON CONFLICT(local_user_id) DO UPDATE SET cloud_account_id=excluded.cloud_account_id,linked_at=excluded.linked_at").run(req.user.id,result.account.id,new Date().toISOString());
+    const applied=cloudSync.applyPending();
+    return {ok:true,identityStatus:"linked",cloudAccount:result.account,applied};
+  } catch(error) {
+    console.warn("[BitVoid] Cloud profile link failed:",error.message);
+    return reply.code(502).send({error:"cloud_unreachable",message:"Could not reach the cloud service. Your campus profile remains available locally."});
+  }
+});
+app.get("/api/v1/cloud/status", { preHandler: requireUser }, async req => {
+  const link=db.prepare("SELECT cloud_account_id AS cloudAccountId,linked_at AS linkedAt FROM cloud_identity_links WHERE local_user_id=?").get(req.user.id)||null;
+  return {identityStatus:link?"linked":"pending-cloud-link",link,sync:cloudSync.getSnapshot()};
+});
+
+
 app.post("/api/v1/conversations", { preHandler: requireUser }, async (req, reply) => {
   const type = req.body?.type === "group" ? "group" : "direct";
   const title = typeof req.body?.title === "string" ? req.body.title.trim().slice(0,80) : null;
