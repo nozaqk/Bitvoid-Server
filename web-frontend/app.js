@@ -1,4 +1,4 @@
-const API = (window.BITVOID_API_URL || "").replace(/\/$/,"") + "/api/v1";
+const API = (window.BITVOID_API_URL || "https://bitvoid-cloud-api.onrender.com").replace(/\/$/,"") + "/api/v1";
 const $ = id => document.getElementById(id);
 let mode = "login", token = localStorage.getItem("bitvoid.cloud.token") || "", account = null, activeConversation = null, conversations = [];
 
