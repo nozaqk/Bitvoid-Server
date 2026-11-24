@@ -10,7 +10,7 @@ services:
     runtime: node
     plan: starter
     rootDir: cloud-server
-    buildCommand: npm install
+    buildCommand: npm install && npm run check
     startCommand: npm start
     healthCheckPath: /health
     envVars:
@@ -30,11 +30,6 @@ services:
   - type: web
     name: bitvoid-web
     runtime: static
-    plan: starter
     rootDir: web-frontend
     buildCommand: ""
     staticPublishPath: .
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
