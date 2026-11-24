@@ -44,7 +44,7 @@ Not yet completed:
 - 
 - Account linking/claiming for campus-created pending profiles.
 - Conflict-resolution handlers, tombstone retention and multi-campus node management.
-- Browser WebSocket live updates, audio/WebRTC signaling, media and notifications.
+- Browser WebSocket live updates for messaging, media and notifications. The cloud now has an authenticated WebRTC signaling relay; browser microphone controls, peer-connection lifecycle, ICE/STUN/TURN configuration and end-to-end audio-call validation are still outstanding.
 - Deployment, database migration test, browser test, and physical campus/ESP-12E validation.
 
 Do not expose the local PC server or ESP dashboard directly to the public internet. Use the cloud API for remote access; use the campus PC server only on the trusted campus network.
