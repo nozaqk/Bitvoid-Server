@@ -274,7 +274,8 @@ app.post("/api/v1/sync/push", { preHandler: requireSyncNode }, async (req, reply
         fail(400,"A sync event is invalid or contains a prohibited credential field.","invalid_sync_event");
       }
       if(event.entityType==="local_profile") { accepted++; continue; }
-      let payload={...event.payload}, ownerId=event.ownerId||null;
+      if(!["conversation","message"].includes(event.entityType)) fail(400,"Unsupported synchronized entity type.","unsupported_sync_entity");
+      let payload={...event.payload}, ownerId=null;
       if(event.entityType==="conversation") {
         const localIds=[...new Set([payload.createdBy,...(payload.memberIds||[])].filter(Boolean))];
         const mapped=await client.query("SELECT local_user_id,account_id FROM campus_identity_links WHERE node_id=$1 AND local_user_id=ANY($2::text[])",[nodeId,localIds]);
