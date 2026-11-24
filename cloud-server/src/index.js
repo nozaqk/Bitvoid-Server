@@ -69,16 +69,16 @@ async function migrate() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
     CREATE INDEX IF NOT EXISTS sync_events_owner_sequence_idx ON sync_events(owner_id, sequence);
+    CREATE TABLE IF NOT EXISTS campus_entity_links (
+      node_id TEXT NOT NULL, entity_type TEXT NOT NULL, local_entity_id TEXT NOT NULL,
+      cloud_entity_id TEXT NOT NULL, revision BIGINT NOT NULL DEFAULT 1,
+      PRIMARY KEY(node_id,entity_type,local_entity_id)
+    );
     CREATE TABLE IF NOT EXISTS campus_identity_links (
       node_id TEXT NOT NULL, local_user_id TEXT NOT NULL,
       account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
       linked_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       PRIMARY KEY(node_id,local_user_id), UNIQUE(node_id,account_id)
-    );
-    CREATE TABLE IF NOT EXISTS campus_entity_links (
-      node_id TEXT NOT NULL, entity_type TEXT NOT NULL, local_entity_id TEXT NOT NULL,
-      cloud_entity_id TEXT NOT NULL, revision BIGINT NOT NULL DEFAULT 1,
-      PRIMARY KEY(node_id,entity_type,local_entity_id)
     );
   `);
 }
@@ -128,6 +128,21 @@ async function isMember(conversationId, accountId) {
   return result.rowCount > 0;
 }
 
+async function publishToLinkedCampuses(accountIds,entityType,entityId,payload) {
+  const ids=[...new Set(accountIds)];
+  if(!ids.length) return;
+  const nodes=await pool.query(
+    "SELECT node_id FROM campus_identity_links WHERE account_id=ANY($1::uuid[]) GROUP BY node_id HAVING COUNT(DISTINCT account_id)=$2",
+    [ids,ids.length]
+  );
+  for(const {node_id:nodeId} of nodes.rows) {
+    await pool.query(
+      "INSERT INTO sync_events(event_id,source_node,owner_id,entity_type,entity_id,revision,payload) VALUES($1,'cloud',$2,$3,$4,1,$5::jsonb) ON CONFLICT(event_id) DO NOTHING",
+      [randomUUID(),ids[0],entityType,String(entityId),JSON.stringify(payload)]
+    );
+  }
+}
+
 app.get("/", async () => ({ service: "bitvoid-cloud", status: "ready", api: "/api/v1", version: "0.1.0" }));
 app.get("/health", async () => {
   await pool.query("SELECT 1");
@@ -169,8 +184,9 @@ app.post("/api/v1/auth/login", async (req, reply) => {
     fail(401, "Email or password is incorrect.", "invalid_credentials");
   return { account:{ id:account.id,email:account.email,username:account.username,status:account.status }, token:signToken(account), tokenType:"Bearer", expiresIn:TOKEN_TTL_SECONDS };
 });
-app.get("/api/v1/auth/me", { preHandler: requireAccount }, async req => ({ account:req.account }));\n
-app.post("/api/v1/sync/link-profile", { preHandler: requireAccount }, async (req,reply) => {
+app.get("/api/v1/auth/me", { preHandler: requireAccount }, async req => ({ account:req.account }));
+
+app.post("/api/v1/sync/link-profile", { preHandler: [requireSyncNode,requireAccount] }, async (req,reply) => {
   const nodeId=String(req.body?.nodeId||"").trim();
   const localUserId=String(req.body?.localUserId||"").trim();
   if(!/^[a-zA-Z0-9._:-]{3,80}$/.test(nodeId) || !/^[0-9a-f-]{36}$/i.test(localUserId))
@@ -181,9 +197,8 @@ app.post("/api/v1/sync/link-profile", { preHandler: requireAccount }, async (req
     if(error.code==="23505") fail(409,"This cloud account is already linked to another profile on this campus node.","profile_already_linked");
     throw error;
   }
-  return reply.code(200).send({ok:true,nodeId,localUserId,account:{id:req.account.id,username:req.account.username},identityStatus:"linked"});
+  return reply.send({ok:true,nodeId,localUserId,account:{id:req.account.id,username:req.account.username},identityStatus:"linked"});
 });
-
 
 app.get("/api/v1/conversations", { preHandler: requireAccount }, async req => {
   const result = await pool.query(`
@@ -216,7 +231,9 @@ app.post("/api/v1/conversations", { preHandler: requireAccount }, async (req, re
     await client.query("COMMIT");
   } catch (error) { await client.query("ROLLBACK"); throw error; }
   finally { client.release(); }
-  return reply.code(201).send({ id,kind,title,members:[{id:req.account.id,username:req.account.username},...users.rows] });
+  const memberIds=[req.account.id,...users.rows.map(user=>user.id)];
+  await publishToLinkedCampuses(memberIds,"conversation",id,{id,kind,title,createdAt:new Date().toISOString(),createdBy:req.account.id,memberIds});
+return reply.code(201).send({ id,kind,title,members:[{id:req.account.id,username:req.account.username},...users.rows] });
 });
 app.get("/api/v1/conversations/:id/messages", { preHandler: requireAccount }, async (req, reply) => {
   if (!await isMember(req.params.id,req.account.id)) return reply.code(404).send({ error:"conversation_not_found" });
@@ -237,7 +254,11 @@ app.post("/api/v1/conversations/:id/messages", { preHandler: requireAccount }, a
     "INSERT INTO messages(id,conversation_id,sender_id,body) VALUES($1,$2,$3,$4) RETURNING id,conversation_id,sender_id,body,created_at",
     [id,req.params.id,req.account.id,body]
   );
-  return reply.code(201).send({ ...result.rows[0], sender:req.account.username });
+  const members=await pool.query("SELECT account_id FROM conversation_members WHERE conversation_id=$1",[req.params.id]);
+  const message=result.rows[0];
+  const payload={id:message.id,conversationId:message.conversation_id,senderId:message.sender_id,body:message.body,createdAt:message.created_at};
+  await publishToLinkedCampuses(members.rows.map(row=>row.account_id),"message",id,payload);
+return reply.code(201).send({ ...result.rows[0], sender:req.account.username });
 });
 
 // Campus nodes exchange append-only, idempotent events. Passwords and auth tokens are never valid event payloads.
@@ -257,10 +278,31 @@ app.post("/api/v1/sync/push", { preHandler: requireSyncNode }, async (req, reply
           ["password","passwordHash","password_hash","token","accessToken","refreshToken"].some(k=>Object.hasOwn(event.payload,k))) {
         fail(400,"A sync event is invalid or contains a prohibited credential field.","invalid_sync_event");
       }
+      if(event.entityType==="local_profile") { accepted++; continue; }
+      if(!["conversation","message"].includes(event.entityType)) fail(400,"Unsupported synchronized entity type.","unsupported_sync_entity");
+      let payload={...event.payload}, ownerId=null;
+      if(event.entityType==="conversation") {
+        const localIds=[...new Set([payload.createdBy,...(payload.memberIds||[])].filter(Boolean))];
+        const mapped=await client.query("SELECT local_user_id,account_id FROM campus_identity_links WHERE node_id=$1 AND local_user_id=ANY($2::text[])",[nodeId,localIds]);
+        const byLocal=new Map(mapped.rows.map(row=>[row.local_user_id,row.account_id]));
+        if(localIds.some(id=>!byLocal.has(id))) fail(409,"Link every campus conversation member to a cloud account before syncing this conversation.","members_not_linked");
+        ownerId=byLocal.get(payload.createdBy);
+        payload={...payload,createdBy:ownerId,memberIds:payload.memberIds.map(id=>byLocal.get(id)),kind:payload.type==="group"?"group":(payload.kind||"direct")};
+        await client.query("INSERT INTO conversations(id,kind,title,created_by) VALUES($1,$2,$3,$4) ON CONFLICT(id) DO NOTHING",[event.entityId,payload.kind,payload.title||null,ownerId]);
+        for(const accountId of payload.memberIds) await client.query("INSERT INTO conversation_members(conversation_id,account_id) VALUES($1,$2) ON CONFLICT DO NOTHING",[event.entityId,accountId]);
+      } else if(event.entityType==="message") {
+        const mapped=await client.query("SELECT account_id FROM campus_identity_links WHERE node_id=$1 AND local_user_id=$2",[nodeId,payload.senderId]);
+        if(!mapped.rowCount) fail(409,"Link the message sender to a cloud account before syncing messages.","sender_not_linked");
+        ownerId=mapped.rows[0].account_id;
+        payload={...payload,senderId:ownerId};
+        const membership=await client.query("SELECT 1 FROM conversation_members WHERE conversation_id=$1 AND account_id=$2",[payload.conversationId,ownerId]);
+        if(!membership.rowCount) fail(409,"The cloud conversation membership must be synchronized before its messages.","conversation_not_synced");
+        await client.query("INSERT INTO messages(id,conversation_id,sender_id,body,created_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT(id) DO NOTHING",[event.entityId,payload.conversationId,ownerId,payload.body,payload.createdAt||new Date().toISOString()]);
+      }
       const inserted = await client.query(`
         INSERT INTO sync_events(event_id,source_node,owner_id,entity_type,entity_id,revision,payload)
         VALUES($1,$2,$3,$4,$5,$6,$7::jsonb) ON CONFLICT(event_id) DO NOTHING RETURNING sequence
-      `, [event.eventId,nodeId,event.ownerId || null,event.entityType,event.entityId,Math.max(1,Number(event.revision)||1),JSON.stringify(event.payload)]);
+      `, [event.eventId,nodeId,ownerId,event.entityType,event.entityId,Math.max(1,Number(event.revision)||1),JSON.stringify(payload)]);
       if (inserted.rowCount) accepted++; else duplicates++;
     }
     await client.query("COMMIT");
@@ -269,11 +311,13 @@ app.post("/api/v1/sync/push", { preHandler: requireSyncNode }, async (req, reply
   return reply.send({ ok:true,accepted,duplicates });
 });
 app.get("/api/v1/sync/pull", { preHandler: requireSyncNode }, async req => {
-  const after = Math.max(0,Number(req.query.after)||0);\n  const nodeId=String(req.query.nodeId||"").trim();\n  if(!/^[a-zA-Z0-9._:-]{3,80}$/.test(nodeId)) fail(400,"A valid nodeId is required.","invalid_node");
+  const after = Math.max(0,Number(req.query.after)||0);
+  const nodeId=String(req.query.nodeId||"").trim();
+  if(!/^[a-zA-Z0-9._:-]{3,80}$/.test(nodeId)) fail(400,"A valid nodeId is required.","invalid_node");
   const limit = Math.min(500,Math.max(1,Number(req.query.limit)||200));
   const result = await pool.query(
-    "SELECT sequence,event_id AS \"eventId\",source_node AS \"sourceNode\",owner_id AS \"ownerId\",entity_type AS \"entityType\",entity_id AS \"entityId\",revision,payload,created_at AS \"createdAt\" FROM sync_events WHERE sequence>$1 ORDER BY sequence ASC LIMIT $2",
-    [after,limit]
+    "SELECT sequence,event_id AS \"eventId\",source_node AS \"sourceNode\",owner_id AS \"ownerId\",entity_type AS \"entityType\",entity_id AS \"entityId\",revision,payload,created_at AS \"createdAt\" FROM sync_events WHERE sequence>$1 AND owner_id IN (SELECT account_id FROM campus_identity_links WHERE node_id=$2) ORDER BY sequence ASC LIMIT $3",
+    [after,nodeId,limit]
   );
   return { events:result.rows, nextCursor:result.rows.at(-1)?.sequence || after, hasMore:result.rowCount===limit };
 });

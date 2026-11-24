@@ -5,3 +5,4 @@ pc-server/.env
 esp12e-firmware/BitVoidESP12E/config.h
 *.log
 .DS_Store
+cloud-server/.env
