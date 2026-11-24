@@ -117,6 +117,21 @@ async function isMember(conversationId, accountId) {
   return result.rowCount > 0;
 }
 
+async function publishToLinkedCampuses(accountIds,entityType,entityId,payload) {
+  const ids=[...new Set(accountIds)];
+  if(!ids.length) return;
+  const nodes=await pool.query(
+    "SELECT node_id FROM campus_identity_links WHERE account_id=ANY($1::uuid[]) GROUP BY node_id HAVING COUNT(DISTINCT account_id)=$2",
+    [ids,ids.length]
+  );
+  for(const {node_id:nodeId} of nodes.rows) {
+    await pool.query(
+      "INSERT INTO sync_events(event_id,source_node,owner_id,entity_type,entity_id,revision,payload) VALUES($1,'cloud',$2,$3,$4,1,$5::jsonb) ON CONFLICT(event_id) DO NOTHING",
+      [randomUUID(),ids[0],entityType,String(entityId),JSON.stringify(payload)]
+    );
+  }
+}
+
 app.get("/", async () => ({ service: "bitvoid-cloud", status: "ready", api: "/api/v1", version: "0.1.0" }));
 app.get("/health", async () => {
   await pool.query("SELECT 1");
@@ -191,7 +206,9 @@ app.post("/api/v1/conversations", { preHandler: requireAccount }, async (req, re
     await client.query("COMMIT");
   } catch (error) { await client.query("ROLLBACK"); throw error; }
   finally { client.release(); }
-  return reply.code(201).send({ id,kind,title,members:[{id:req.account.id,username:req.account.username},...users.rows] });
+  const memberIds=[req.account.id,...users.rows.map(user=>user.id)];
+  await publishToLinkedCampuses(memberIds,"conversation",id,{id,kind,title,createdAt:new Date().toISOString(),createdBy:req.account.id,memberIds});
+return reply.code(201).send({ id,kind,title,members:[{id:req.account.id,username:req.account.username},...users.rows] });
 });
 app.get("/api/v1/conversations/:id/messages", { preHandler: requireAccount }, async (req, reply) => {
   if (!await isMember(req.params.id,req.account.id)) return reply.code(404).send({ error:"conversation_not_found" });
@@ -212,7 +229,11 @@ app.post("/api/v1/conversations/:id/messages", { preHandler: requireAccount }, a
     "INSERT INTO messages(id,conversation_id,sender_id,body) VALUES($1,$2,$3,$4) RETURNING id,conversation_id,sender_id,body,created_at",
     [id,req.params.id,req.account.id,body]
   );
-  return reply.code(201).send({ ...result.rows[0], sender:req.account.username });
+  const members=await pool.query("SELECT account_id FROM conversation_members WHERE conversation_id=$1",[req.params.id]);
+  const message=result.rows[0];
+  const payload={id:message.id,conversationId:message.conversation_id,senderId:message.sender_id,body:message.body,createdAt:message.created_at};
+  await publishToLinkedCampuses(members.rows.map(row=>row.account_id),"message",id,payload);
+return reply.code(201).send({ ...result.rows[0], sender:req.account.username });
 });
 
 // Campus nodes exchange append-only, idempotent events. Passwords and auth tokens are never valid event payloads.
