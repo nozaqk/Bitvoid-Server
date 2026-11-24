@@ -6,7 +6,8 @@ Node.js 22.13+ server for Windows and Linux. It hosts the BitVoid API, local SQL
 
 | Component | URL | Purpose |
 |---|---|---|
-| Main BitVoid application/API | `http://bitvoid.local:8787` | Used by BitVoid clients |
+| Main BitVoid application/API | `http://bitvoid.local:8787` | API used by BitVoid clients |
+| Campus browser client | `http://bitvoid.local:8787/app` | Local device pairing and campus text messaging |
 | PC server administrator | `http://pc-server.local:8787/admin` | PC server management; protected by the PC dashboard account |
 | ESP gateway administrator | `http://esp-server.local/admin` | ESP-12E management; protected by separate ESP credentials |
 
@@ -28,6 +29,10 @@ npm start
 Requires Node.js 22.13 or newer. On first start, the server creates a one-time PC dashboard setup code in `.state/admin-setup-code.txt` and prints it in the PC terminal. Open the PC dashboard, enter that code, choose an administrator username, and create a password of at least 12 characters. The setup code is deleted after successful setup. Keep the `.state/` directory private.
 
 The dashboard uses an HttpOnly, SameSite=Strict session cookie, in-memory 12-hour sessions, password hashing with Node's scrypt, and basic login-attempt throttling. Restarting the server ends all dashboard sessions. Do not expose this HTTP dashboard to the public internet; it is intended for a trusted local network. Add TLS and stronger operational controls before remote/public deployment.
+
+## Campus browser client
+
+Open `http://bitvoid.local:8787/app` on a phone or computer connected to the campus Wi-Fi. The browser requests a short-lived device-pairing challenge; enter the administrator pairing code printed in the PC terminal, then choose a local username. The browser stores its device bearer token in that browser profile and can then create direct conversations and send/read text messages. This client talks only to the campus PC server; it does not require internet access. Local profiles are marked pending cloud link until a cloud account-linking flow is completed.
 
 ## Dashboard features
 
