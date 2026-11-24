@@ -253,10 +253,30 @@ app.post("/api/v1/sync/push", { preHandler: requireSyncNode }, async (req, reply
           ["password","passwordHash","password_hash","token","accessToken","refreshToken"].some(k=>Object.hasOwn(event.payload,k))) {
         fail(400,"A sync event is invalid or contains a prohibited credential field.","invalid_sync_event");
       }
+      if(event.entityType==="local_profile") { accepted++; continue; }
+      let payload={...event.payload}, ownerId=event.ownerId||null;
+      if(event.entityType==="conversation") {
+        const localIds=[...new Set([payload.createdBy,...(payload.memberIds||[])].filter(Boolean))];
+        const mapped=await client.query("SELECT local_user_id,account_id FROM campus_identity_links WHERE node_id=$1 AND local_user_id=ANY($2::text[])",[nodeId,localIds]);
+        const byLocal=new Map(mapped.rows.map(row=>[row.local_user_id,row.account_id]));
+        if(localIds.some(id=>!byLocal.has(id))) fail(409,"Link every campus conversation member to a cloud account before syncing this conversation.","members_not_linked");
+        ownerId=byLocal.get(payload.createdBy);
+        payload={...payload,createdBy:ownerId,memberIds:payload.memberIds.map(id=>byLocal.get(id)),kind:payload.type==="group"?"group":(payload.kind||"direct")};
+        await client.query("INSERT INTO conversations(id,kind,title,created_by) VALUES($1,$2,$3,$4) ON CONFLICT(id) DO NOTHING",[event.entityId,payload.kind,payload.title||null,ownerId]);
+        for(const accountId of payload.memberIds) await client.query("INSERT INTO conversation_members(conversation_id,account_id) VALUES($1,$2) ON CONFLICT DO NOTHING",[event.entityId,accountId]);
+      } else if(event.entityType==="message") {
+        const mapped=await client.query("SELECT account_id FROM campus_identity_links WHERE node_id=$1 AND local_user_id=$2",[nodeId,payload.senderId]);
+        if(!mapped.rowCount) fail(409,"Link the message sender to a cloud account before syncing messages.","sender_not_linked");
+        ownerId=mapped.rows[0].account_id;
+        payload={...payload,senderId:ownerId};
+        const membership=await client.query("SELECT 1 FROM conversation_members WHERE conversation_id=$1 AND account_id=$2",[payload.conversationId,ownerId]);
+        if(!membership.rowCount) fail(409,"The cloud conversation membership must be synchronized before its messages.","conversation_not_synced");
+        await client.query("INSERT INTO messages(id,conversation_id,sender_id,body,created_at) VALUES($1,$2,$3,$4,$5) ON CONFLICT(id) DO NOTHING",[event.entityId,payload.conversationId,ownerId,payload.body,payload.createdAt||new Date().toISOString()]);
+      }
       const inserted = await client.query(`
         INSERT INTO sync_events(event_id,source_node,owner_id,entity_type,entity_id,revision,payload)
         VALUES($1,$2,$3,$4,$5,$6,$7::jsonb) ON CONFLICT(event_id) DO NOTHING RETURNING sequence
-      `, [event.eventId,nodeId,event.ownerId || null,event.entityType,event.entityId,Math.max(1,Number(event.revision)||1),JSON.stringify(event.payload)]);
+      `, [event.eventId,nodeId,ownerId,event.entityType,event.entityId,Math.max(1,Number(event.revision)||1),JSON.stringify(payload)]);
       if (inserted.rowCount) accepted++; else duplicates++;
     }
     await client.query("COMMIT");
