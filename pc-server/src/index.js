@@ -10,6 +10,7 @@ import { ensureAdminSetupCode } from "./admin-auth.js";
 import { registerAdminRoutes, logAdminActivity } from "./admin-routes.js";
 import { createGatewayMonitor } from "./gateway-monitor.js";
 import { createCloudSync } from "./cloud-sync.js";
+import { registerClientRoutes } from "./client-routes.js";
 
 const app = Fastify({ logger: false, bodyLimit: 1024 * 1024 });
 const db = getDatabase();
@@ -30,6 +31,7 @@ await app.register(cors, { origin: true });
 await app.register(websocket);
 
 registerAdminRoutes(app, db, sockets, { name: SERVER_NAME, gatewayMonitor });
+registerClientRoutes(app);
 
 function advertiseLocalNames() {
   // These are separate mDNS host records: clients use bitvoid.local for the API,
@@ -186,6 +188,7 @@ try {
   advertiseLocalNames();
   console.log("\nBitVoid PC Server is running.");
   console.log("Main application/API: http://bitvoid.local:" + PORT);
+  console.log("Campus browser client: http://bitvoid.local:" + PORT + "/app");
   console.log("PC administrator dashboard: http://pc-server.local:" + PORT + "/admin");
   console.log("PC fallback (local only): http://127.0.0.1:" + PORT + "/admin");
   for (const item of getLanAddresses(PORT)) console.log("LAN fallback (" + item.interface + "): " + item.url);
