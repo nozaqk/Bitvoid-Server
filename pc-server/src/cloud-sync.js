@@ -11,7 +11,7 @@ export function createCloudSync(db, options = {}) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS sync_outbox(
       event_id TEXT PRIMARY KEY, entity_type TEXT NOT NULL, entity_id TEXT NOT NULL,
-      revision INTEGER NOT NULL DEFAULT 1, payload TEXT NOT NULL, created_at TEXT NOT NULL, applied_at TEXT
+      revision INTEGER NOT NULL DEFAULT 1, payload TEXT NOT NULL, created_at TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS sync_inbox(
       sequence INTEGER PRIMARY KEY, event_id TEXT NOT NULL UNIQUE, source_node TEXT NOT NULL,
