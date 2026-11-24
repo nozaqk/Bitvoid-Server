@@ -24,11 +24,11 @@ Each event has:
 - `payload`: JSON object, never credentials.
 - `sequence`: cloud-assigned append-only cursor.
 
-Campus nodes authenticate with `X-BitVoid-Sync-Secret`. The cloud push endpoint accepts up to 250 events per request and deduplicates repeated event IDs. Pull requests use an exclusive numeric cursor and return ordered events. A campus client persists its last applied cursor only after applying the whole batch transactionally. Retries are safe because event IDs are idempotent.
+Campus nodes authenticate with `X-BitVoid-Sync-Secret`. The cloud push endpoint accepts up to 250 events per request and deduplicates repeated event IDs. Pull requests use an exclusive numeric cursor and return ordered events. The campus client persists received events and a cloud cursor transactionally, then applies events in a separate idempotent local transaction. Events that depend on an identity not yet linked remain pending and are retried after account linking. Retries are safe because event IDs are idempotent.
 
 ## Conflict and deletion rules
 
-The first event log is transport infrastructure, not a complete conflict resolver. Entity handlers must enforce per-entity revisions, reject stale updates, and record conflict metadata rather than blindly overwriting newer data. Deletions must be tombstone events; do not physically delete synchronized entities until all participating nodes have advanced beyond the tombstone. Cloud-managed account status and identity fields cannot be overwritten by campus-originated events.
+The current event log and entity handlers provide basic ID mapping and duplicate-safe inserts, but are not a complete conflict resolver. Entity handlers must enforce per-entity revisions, reject stale updates, and record conflict metadata rather than blindly overwriting newer data. Deletions must be tombstone events; do not physically delete synchronized entities until all participating nodes have advanced beyond the tombstone. Cloud-managed account status and identity fields cannot be overwritten by campus-originated events.
 
 ## Current milestone
 
@@ -36,12 +36,12 @@ Implemented in this branch:
 - Cloud registration, login, signed bearer sessions and account lookup.
 - PostgreSQL schema for accounts, conversations, members, messages and append-only sync events.
 - Direct/group conversation creation and message history/send endpoints.
-- Idempotent cloud sync push and cursor-based pull endpoints.
+- Idempotent cloud sync push and node-scoped cursor-based pull endpoints.\n- Campus account linking: an existing cloud account can claim a local profile after cloud login; only the cloud account ID is stored locally.\n- Campus outbox/inbox sync worker with retry, persistent cursor and idempotent event handling.\n- Cloud-side mapping of campus profile IDs to global account IDs, plus conversation/message application.\n- Incoming cloud conversations and messages are applied to the local SQLite database when their linked campus identities are available.
 - Independent responsive browser frontend for cloud account registration, login and text messaging.
 - Render blueprint for cloud API, static frontend and managed PostgreSQL.
 
 Not yet completed:
-- Integrating the existing PC SQLite server with the sync endpoints and a durable local outbox.
+- 
 - Account linking/claiming for campus-created pending profiles.
 - Conflict-resolution handlers, tombstone retention and multi-campus node management.
 - Browser WebSocket live updates, audio/WebRTC signaling, media and notifications.
