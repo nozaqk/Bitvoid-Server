@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import pg from "pg";
+import { attachCallSignaling } from "./signaling.js";
 import { createHmac, randomBytes, randomUUID, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 
@@ -321,6 +322,8 @@ app.get("/api/v1/sync/pull", { preHandler: requireSyncNode }, async req => {
   );
   return { events:result.rows, nextCursor:result.rows.at(-1)?.sequence || after, hasMore:result.rowCount===limit };
 });
+
+attachCallSignaling(app, { pool, requireAccount });
 
 app.setNotFoundHandler((_req,reply)=>reply.code(404).send({error:"not_found"}));
 app.setErrorHandler((error,_req,reply)=>{
