@@ -62,10 +62,11 @@ export function createCloudSync(db, options = {}) {
       const updateCursor = db.prepare("INSERT INTO sync_state(key,value) VALUES('cloud_cursor',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value");
       db.exec("BEGIN IMMEDIATE");
       try {
-        for (const event of data.events || []) insert.run(
-          Number(event.sequence),event.eventId,event.sourceNode,event.entityType,event.entityId,
-          Number(event.revision)||1,JSON.stringify(event.payload),event.createdAt || new Date().toISOString()
-        );
+        for (const event of data.events || []) {
+          if (event.sourceNode === nodeId) continue;
+          insert.run(Number(event.sequence),event.eventId,event.sourceNode,event.entityType,event.entityId,
+            Number(event.revision)||1,JSON.stringify(event.payload),event.createdAt || new Date().toISOString());
+        }
         if (data.nextCursor !== undefined) updateCursor.run(String(data.nextCursor));
         db.exec("COMMIT");
       } catch (error) { db.exec("ROLLBACK"); throw error; }
