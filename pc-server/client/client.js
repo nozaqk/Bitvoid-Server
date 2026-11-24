@@ -1,6 +1,6 @@
 const $=id=>document.getElementById(id);
 const API="/api/v1";
-let token=localStorage.getItem("bitvoid.local.deviceToken")||"",deviceId=localStorage.getItem("bitvoid.local.deviceId")||crypto.randomUUID(),user=null,active=null,conversations=[];
+let token=localStorage.getItem("bitvoid.local.deviceToken")||"",deviceId=localStorage.getItem("bitvoid.local.deviceId")||("browser-"+Date.now()+"-"+Math.random().toString(36).slice(2)),user=null,active=null,conversations=[];
 localStorage.setItem("bitvoid.local.deviceId",deviceId);
 async function call(path,options={}){const headers={"Content-Type":"application/json",...(options.headers||{})};if(token)headers.Authorization="Bearer "+token;const response=await fetch(API+path,{...options,headers});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.message||data.error||"Request failed");return data}
 function notice(message,good=false){$("notice").textContent=message;$("notice").style.color=good?"#72d9b6":"#ff9eaa"}
