@@ -1,83 +1,29 @@
 # BitVoid Server
 
-Two independent components in one repository:
+BitVoid's server repository is being expanded into a browser-first audio communication architecture with cloud identity and a campus-local service.
 
-- `pc-server/`: Node.js 22.13+ local BitVoid application server for Windows and Linux, including the protected PC administrator dashboard.
-- `esp12e-firmware/`: Arduino IDE sketch for ESP-12E / ESP8266 Wi-Fi access point, gateway discovery and its own protected gateway dashboard.
+## New cloud foundation
 
-## Separate local URLs
+- `cloud-backend/`: Render-deployable Fastify API with PostgreSQL account storage, authentication, profile endpoints, device registration, versioned data-sync primitives, and WebSocket signaling relay.
+- `cloud-backend/web/`: lightweight sign-in/create-account portal prototype.
+- `cloud-backend/render.yaml`: Render Blueprint template.
+- `local-backend/` (planned next): campus server designed to keep data locally and synchronize with cloud whenever connectivity is available.
+- `gateway/` (planned): microcontroller gateway firmware and lightweight captive web view. ESP-12E is not capable of hosting the full application backend or WebRTC stack.
 
-| Component | URL | Login |
-|---|---|---|
-| Main BitVoid service/API | `http://bitvoid.local:8787` | BitVoid client authentication |
-| PC server dashboard | `http://pc-server.local:8787/admin` | PC dashboard administrator account |
-| ESP gateway dashboard | `http://esp-server.local/admin` | ESP credentials in the local, untracked `config.h` |
+## Architecture vision
 
-These are distinct local hostnames. The PC server advertises `bitvoid.local` and `pc-server.local` using mDNS/Bonjour; the ESP advertises `esp-server.local`. They are intended for devices on the same local network with mDNS support. If mDNS is unavailable, use the PC LAN IP printed at startup or the ESP fallback `http://192.168.4.1/admin`.
+Campus devices use the local backend and campus LAN without requiring internet for local operations. User account/data sync happens in the background when cloud access exists. Outside campus, users authenticate against the cloud account store and access cloud services.
 
-The dashboards are separate: the PC dashboard manages application users, paired devices, conversations, service status and activity. The ESP dashboard manages and reports the gateway's own Wi-Fi and hardware status. The ESP dashboard does not replace the PC dashboard, and the ESP does not host the BitVoid messaging API.
+Local registration during an outage should be queued for cloud account reconciliation. Conflict policy and identity security must be finalized before local/cloud sync is enabled.
 
-## Network layout
+## Existing components
 
-```text
-ESP-12E SoftAP (192.168.4.1, esp-server.local)
-      |-- PC running BitVoid server :8787
-      |      |-- Main app/API: bitvoid.local:8787
-      |      |-- PC dashboard: pc-server.local:8787/admin
-      |      |-- REST API + WebSocket messaging
-      |      |-- SQLite persistence
-      |      |-- Authenticated ESP heartbeat polling
-      |-- Android / desktop clients
-      |-- Other local Wi-Fi devices
+The original PC-server and ESP12E gateway code are retained in their existing folders. The redesign is staged in a separate branch and must not be confused with a complete, validated replacement.
 
-ESP dashboard: http://esp-server.local/admin
-```
+## Cloud deploy
 
-## Start the PC server
+See cloud-backend/README.md. Deployment has not yet occurred; the Render service URL is not established. Do not use the placeholder API URL in the web portal until the service is deployed.
 
-Before starting, copy `pc-server/.env.example` to `pc-server/.env` and set the ESP dashboard username/password to match the ESP local `config.h`. The PC server uses these credentials for authenticated gateway health polling. Keep both configuration files private; neither should be committed.
+## Current cloud milestone limitations
 
-```bash
-cd pc-server
-npm install
-npm run check
-npm start
-```
-
-Requires Node.js 22.13 or newer. On first start, copy the one-time PC dashboard setup code from the PC terminal into the PC dashboard, then create the PC administrator username and password.
-
-## Upload ESP-12E firmware
-
-1. Open `esp12e-firmware/BitVoidESP12E/BitVoidESP12E.ino` in Arduino IDE.
-2. Copy `config.example.h` to `config.h` in the same sketch folder.
-3. Set a unique Wi-Fi SSID/password, gateway ID and display name.
-4. Set a separate ESP dashboard username and password (at least 12 characters).
-5. Install the ESP8266 board package and ArduinoJson 6.x.
-6. Select your ESP-12E board/serial port and upload.
-7. Connect to the ESP Wi-Fi and open `http://esp-server.local/admin`. If mDNS is unavailable, use `http://192.168.4.1/admin`.
-
-The ESP dashboard displays live status, connected station count, uptime, free heap, SSID, AP IP/MAC, chip ID, flash size and ESP8266 core version. The dashboard never displays the Wi-Fi password.
-
-## Current implementation status
-
-Implemented in source:
-- PC HTTP API, gateway metadata and local SQLite persistence.
-- Time-limited device pairing and device bearer tokens.
-- User registration and direct/group messaging.
-- Authenticated WebSocket message events.
-- PC administrator dashboard with first-run account setup, live monitoring, charts, user/device/node tables and activity log.
-- PC mDNS hostnames for the main service and PC dashboard.
-- ESP-12E SoftAP, mDNS hostname `esp-server.local`, gateway discovery/health endpoints.
-- Independent password-protected ESP gateway dashboard with live local hardware diagnostics.
-- Authenticated PC-to-ESP gateway health polling every 10 seconds, including online/offline state, last check/last seen, latency and gateway hardware/network telemetry. The PC monitor uses HTTP Basic Authentication and does not return the ESP password to the dashboard client.
-
-Not yet implemented or validated:
-- Full compatibility with every existing BitVoid Android backend endpoint.
-- Android client integration and automatic server discovery.
-- Media uploads/streaming, complete channels, attachments, WebRTC calls and push notifications.
-- Production-grade physical pairing, TLS and public-network hardening.
-- End-to-end validation on the target Windows PC and a physical ESP-12E, including Arduino compilation/flashing, mDNS resolution and a live PC-to-ESP heartbeat.
-
-The source has not yet been verified on the target PC or flashed/tested on physical ESP-12E hardware. mDNS behavior depends on client OS, network multicast support and firewall configuration. See the individual project READMEs and `docs/architecture.md`.
-
-No GitHub Actions workflows are used.
+No completed WebRTC browser client, TURN service, account email verification, password reset, secure call ticketing, end-to-end encryption, robust sync reconciliation, or physical offline-campus test yet. Cloud API source has not been run in a test environment.
