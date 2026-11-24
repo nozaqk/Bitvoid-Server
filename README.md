@@ -75,7 +75,7 @@ Implemented in source:
 Not yet implemented or validated:
 - Full compatibility with every existing BitVoid Android backend endpoint.
 - Android client integration and automatic server discovery.
-- Media uploads/streaming, complete channels, attachments, WebRTC calls and push notifications.
+- Media uploads/streaming, complete channels, attachments, browser WebRTC audio-call controls/peer lifecycle, STUN/TURN deployment and push notifications.
 - Production-grade physical pairing, TLS and public-network hardening.
 - End-to-end validation on the target Windows PC and a physical ESP-12E, including Arduino compilation/flashing, mDNS resolution and a live PC-to-ESP heartbeat.
 
@@ -90,6 +90,6 @@ The `cloud-server/` directory contains the Render cloud API and PostgreSQL schem
 
 The campus PC server now has a durable sync outbox/inbox transport worker. Local profile creation, conversations and messages are queued as credential-free events. The worker retries cloud pushes, uses idempotent event IDs, pulls remote events by a persistent cursor, and stores received events in the local inbox. Local-only profiles are explicitly marked pending cloud link. Passwords, hashes and bearer tokens are not synchronized.
 
-**Important:** this is the first cloud/sync foundation, not a completed end-to-end sync release. Incoming events are safely persisted but are not yet applied to local users/conversations/messages; account linking, conflict resolution, tombstone handling and full bidirectional entity reconciliation remain to be implemented. The web client currently provides text messaging only. WebRTC audio calls and real-time browser push are not implemented.
+**Important:** this is the first cloud/sync foundation, not a completed end-to-end sync release. Incoming events are safely persisted but are not yet applied to local users/conversations/messages; account linking, conflict resolution, tombstone handling and full bidirectional entity reconciliation remain to be implemented. The web client currently provides text messaging only. The cloud API now includes authenticated WebSocket signaling for WebRTC offer/answer/ICE/call-end/reject events, but the browser audio-call UI, peer-connection lifecycle, STUN/TURN configuration and end-to-end audio tests are not yet implemented.
 
 See [docs/cloud-and-sync.md](docs/cloud-and-sync.md) for the event contract, identity rules, deployment notes and remaining work. No GitHub Actions workflows are used.
