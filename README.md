@@ -2,14 +2,15 @@
 
 Two independent components in one repository:
 
-- `pc-server/`: Node.js 22.13+ local BitVoid application server for Windows and Linux, including the protected PC administrator dashboard.
+- `pc-server/`: Node.js 22.13+ local BitVoid application server for Windows and Linux, including the campus browser client and protected PC administrator dashboard.
 - `esp12e-firmware/`: Arduino IDE sketch for ESP-12E / ESP8266 Wi-Fi access point, gateway discovery and its own protected gateway dashboard.
 
 ## Separate local URLs
 
 | Component | URL | Login |
 |---|---|---|
-| Main BitVoid service/API | `http://bitvoid.local:8787` | BitVoid client authentication |
+| Main BitVoid service/API | `http://bitvoid.local:8787` | BitVoid API |
+| Campus browser client | `http://bitvoid.local:8787/app` | Local device pairing and campus messaging |
 | PC server dashboard | `http://pc-server.local:8787/admin` | PC dashboard administrator account |
 | ESP gateway dashboard | `http://esp-server.local/admin` | ESP credentials in the local, untracked `config.h` |
 
