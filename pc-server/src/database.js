@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS admin_accounts(id TEXT PRIMARY KEY,username TEXT NOT 
 CREATE TABLE IF NOT EXISTS admin_activity(id INTEGER PRIMARY KEY AUTOINCREMENT,event TEXT NOT NULL,detail TEXT NOT NULL,created_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS idx_messages_conversation_created ON messages(conversation_id,created_at);
 CREATE INDEX IF NOT EXISTS idx_activity_created ON admin_activity(created_at);
+CREATE TABLE IF NOT EXISTS cloud_identity_links(local_user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,cloud_account_id TEXT NOT NULL UNIQUE,linked_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS cloud_entity_links(entity_type TEXT NOT NULL,local_entity_id TEXT NOT NULL,cloud_entity_id TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 1,PRIMARY KEY(entity_type,local_entity_id));
 `);
 export const getDatabase = () => db;
 export const getStateDirectory = () => stateDir;
