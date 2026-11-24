@@ -9,6 +9,7 @@ import { getLanAddresses } from "./network.js";
 import { ensureAdminSetupCode } from "./admin-auth.js";
 import { registerAdminRoutes, logAdminActivity } from "./admin-routes.js";
 import { createGatewayMonitor } from "./gateway-monitor.js";
+import { createCloudSync } from "./cloud-sync.js";
 
 const app = Fastify({ logger: false, bodyLimit: 1024 * 1024 });
 const db = getDatabase();
@@ -22,6 +23,8 @@ const bonjour = new Bonjour({}, error => console.warn("[BitVoid] mDNS responder 
 const mdnsServices = [];
 const gatewayMonitor = createGatewayMonitor();
 gatewayMonitor.start();
+const cloudSync = createCloudSync(db, { url:process.env.BITVOID_CLOUD_SYNC_URL, nodeId:process.env.BITVOID_CLOUD_NODE_ID, secret:process.env.BITVOID_SYNC_SECRET });
+cloudSync.start();
 
 await app.register(cors, { origin: true });
 await app.register(websocket);
@@ -65,7 +68,7 @@ function errorResponse(error, reply) {
 
 app.get("/", async () => ({ service: "bitvoid", name: SERVER_NAME, status: "ready", api: "/api/v1", dashboard: "http://pc-server.local:" + PORT + "/admin" }));
 app.get("/health", async () => ({ ok: true, status: "ready", uptimeSeconds: Math.floor(process.uptime()) }));
-app.get("/api/v1/health", async () => ({ ok: true, status: "ready", uptimeSeconds: Math.floor(process.uptime()) }));
+app.get("/api/v1/health", async () => ({ ok: true, status: "ready", uptimeSeconds: Math.floor(process.uptime()), cloudSync:cloudSync.getSnapshot() }));
 app.get("/api/v1/gateway/info", async () => ({
   service: "bitvoid", gatewayId: "bv-pc-server", displayName: SERVER_NAME,
   hardware: { family: "computer", model: process.platform },
@@ -106,6 +109,7 @@ app.post("/api/v1/users/register", { preHandler: requireDevice }, async (req, re
   try {
     db.prepare("INSERT INTO users(id,username,device_id,created_at) VALUES(?,?,?,?)").run(id, username, req.device.id, new Date().toISOString());
     logAdminActivity(db, "user.registered", username);
+    cloudSync.enqueue("local_profile", id, { localUserId:id, username, createdAt:new Date().toISOString(), identityStatus:"pending-cloud-link" });
     return reply.code(201).send({ userId: id, username });
   } catch { return reply.code(409).send({ error: "username_unavailable" }); }
 });
@@ -132,6 +136,7 @@ app.post("/api/v1/conversations", { preHandler: requireUser }, async (req, reply
     db.exec("ROLLBACK");
     throw error;
   }
+  cloudSync.enqueue("conversation", id, { id,type,title,createdAt:now,createdBy:req.user.id,memberIds:[req.user.id,...users.map(u=>u.id)] });
   return reply.code(201).send({ id,type,title,createdAt:now,members:[req.user.username,...users.map(u=>u.username)] });
 });
 app.get("/api/v1/conversations", { preHandler: requireUser }, async req => db.prepare(
@@ -150,6 +155,7 @@ app.post("/api/v1/conversations/:id/messages", { preHandler: requireUser }, asyn
   const message = { id:randomUUID(),conversationId:req.params.id,senderId:req.user.id,sender:req.user.username,body,createdAt:new Date().toISOString() };
   db.prepare("INSERT INTO messages(id,conversation_id,sender_id,body,created_at) VALUES(?,?,?,?,?)").run(message.id,message.conversationId,message.senderId,body,message.createdAt);
   sendToConversation(message.conversationId,{ type:"message.created",data:message });
+  cloudSync.enqueue("message", message.id, { ...message });
   logAdminActivity(db, "message.sent", "Message from " + message.sender + " in conversation " + message.conversationId);
   return reply.code(201).send(message);
 });
@@ -192,4 +198,4 @@ try {
   console.error("Could not start BitVoid PC Server:",error);
   process.exit(1);
 }
-for (const signal of ["SIGINT","SIGTERM"]) process.on(signal,async()=>{ gatewayMonitor.stop(); for (const service of mdnsServices) service.stop(); bonjour.destroy(); await app.close(); process.exit(0); });
+for (const signal of ["SIGINT","SIGTERM"]) process.on(signal,async()=>{ gatewayMonitor.stop(); cloudSync.stop(); for (const service of mdnsServices) service.stop(); bonjour.destroy(); await app.close(); process.exit(0); });
