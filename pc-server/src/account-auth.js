@@ -71,10 +71,11 @@ export function registerAccountAuthRoutes(app) {
     const username = String(req.body?.username || "").trim().toLowerCase();
     const password = req.body?.password;
     if (!USERNAME.test(username) || typeof password !== "string") return bad(reply, 401, "invalid_credentials", "Username or password is incorrect.");
-    const user = db.prepare(`SELECT u.id,u.username,u.device_id,c.password_hash,c.password_salt
-      FROM users u JOIN account_credentials c ON c.user_id=u.id WHERE lower(u.username)=lower(?)`).get(username);
+    const user = db.prepare(`SELECT u.id,u.username,u.device_id,c.password_hash,c.password_salt,d.revoked_at AS revokedAt
+      FROM users u JOIN account_credentials c ON c.user_id=u.id JOIN devices d ON d.id=u.device_id WHERE lower(u.username)=lower(?)`).get(username);
     if (!user || !matches(password, user.password_salt, user.password_hash))
       return bad(reply, 401, "invalid_credentials", "Username or password is incorrect.");
+    if (user.revokedAt) return bad(reply, 403, "device_revoked", "This device was revoked by the server administrator. Pair it again before signing in.");
     return reply.send({ ...issueSession(user), expiresIn: 0 });
   });
 
@@ -83,9 +84,10 @@ export function registerAccountAuthRoutes(app) {
     const newPassword = req.body?.newPassword;
     if (!MASTER.test(master) || !validPassword(newPassword))
       return bad(reply, 400, "invalid_recovery_input", "Enter the 44-character hexadecimal master passphrase and a new password of at least 10 characters.");
-    const row = db.prepare(`SELECT u.id,u.username,u.device_id FROM users u
-      JOIN account_credentials c ON c.user_id=u.id WHERE c.master_recovery_hash=?`).get(hash(master.toLowerCase()));
+    const row = db.prepare(`SELECT u.id,u.username,u.device_id,d.revoked_at AS revokedAt FROM users u
+      JOIN account_credentials c ON c.user_id=u.id JOIN devices d ON d.id=u.device_id WHERE c.master_recovery_hash=?`).get(hash(master.toLowerCase()));
     if (!row) return bad(reply, 401, "invalid_recovery_secret", "The master passphrase is incorrect or the account is unavailable.");
+    if (row.revokedAt) return bad(reply, 403, "device_revoked", "This device was revoked by the server administrator. Pair it again before recovering the account on this device.");
     const salt = randomBytes(16).toString("base64url");
     db.prepare("UPDATE account_credentials SET password_hash=?,password_salt=?,updated_at=? WHERE user_id=?")
       .run(passwordHash(newPassword, salt), salt, new Date().toISOString(), row.id);
