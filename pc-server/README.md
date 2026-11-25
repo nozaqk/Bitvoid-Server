@@ -118,15 +118,21 @@ The response contains a device-scoped bearer token. Store it securely on the cli
 | POST | `/api/v1/conversations/:id/messages` | Send a message |
 | WS | `/api/v1/events?token=...` | Authenticated real-time events |
 
-## ESP gateway heartbeat configuration
+## BitVoid Trust Protocol (BVT-1)
 
-1. On the ESP, set BITVOID_ADMIN_USERNAME and BITVOID_ADMIN_PASSWORD in its local config.h.
-2. In pc-server/, copy .env.example to .env.
-3. Set BITVOID_GATEWAY_URL=http://192.168.4.1 and enter the exact ESP dashboard username/password in BITVOID_GATEWAY_ADMIN_USERNAME and BITVOID_GATEWAY_ADMIN_PASSWORD.
-4. Keep .env private; it is ignored by Git. Never commit the credentials.
-5. Restart the PC server. It checks the gateway immediately and then every 10 seconds.
+Server-to-server operations require both a registered server ID and its matching private key. IDs are identifiers, not passwords. The PC server uses separate secrets for the cloud and ESP gateway.
 
-The monitor uses a 3-second request timeout. The PC must be connected to the ESP access point and able to reach 192.168.4.1. It polls only the protected, read-only status endpoint; it cannot change ESP settings or reboot the gateway.
+1. In pc-server/, copy .env.example to .env.
+2. Generate two independent random secrets of at least 32 characters. In Windows PowerShell, run:
+   `[Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))`
+   Run it twice; use one value for `BITVOID_PC_SERVER_SECRET` and a different value for `BITVOID_ESP_TRUST_SECRET`.
+3. In the cloud service environment, set `BITVOID_SERVER_ID=bv-cloud-server-001` and `BITVOID_TRUSTED_SERVER_KEYS` to a JSON object mapping `bv-pc-server-001` to the exact `BITVOID_PC_SERVER_SECRET` value.
+4. In pc-server/.env, set `BITVOID_PC_SERVER_ID=bv-pc-server-001`, `BITVOID_PC_SERVER_SECRET` to the cloud trust key, and `BITVOID_ESP_TRUST_SECRET` to the separate ESP trust key. Set `BITVOID_CLOUD_SERVER_ID=bv-cloud-server-001`.
+5. Copy `config.example.h` to `config.h`. Set `BITVOID_GATEWAY_ID=bv-esp12e-gateway-001`, `BITVOID_PC_SERVER_ID=bv-pc-server-001`, and `BITVOID_ESP_TRUST_SECRET` to the exact ESP trust key from pc-server/.env. Keep config.h private.
+6. Set the ESP Wi-Fi and admin dashboard credentials in config.h. The dashboard credentials are for human administrators; they are not the PC server trust key.
+7. Ensure the PC is connected to the ESP access point, then restart the PC server and flash the ESP firmware. The PC polls the authenticated `/api/v1/internal/status` endpoint every 10 seconds.
+
+The cloud API rejects missing, unknown or incorrectly authenticated server IDs and verifies that the requested sync node ID matches the authenticated ID. The PC verifies the cloud server ID in response headers. The ESP accepts internal telemetry requests only from the configured PC server ID and matching ESP trust key. The ESP gateway ID is checked against the expected ID by the PC. Keep all secrets out of GitHub and rotate them if exposed. Use HTTPS for the cloud URL; the ESP local link remains HTTP and should be confined to the WPA2-protected gateway network.
 
 ## ESP-12E network
 
