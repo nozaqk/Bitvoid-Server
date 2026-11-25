@@ -1,5 +1,6 @@
 const $=id=>document.getElementById(id);
 const API="/api/v1";
+let attachmentObjectUrls=[];
 let token=localStorage.getItem("bitvoid.local.deviceToken")||"",deviceId=localStorage.getItem("bitvoid.local.deviceId")||("browser-"+Date.now()+"-"+Math.random().toString(36).slice(2)),user=null,active=null,conversations=[];
 localStorage.setItem("bitvoid.local.deviceId",deviceId);
 async function call(path,options={}){const headers={"Content-Type":"application/json",...(options.headers||{})};if(token)headers.Authorization="Bearer "+token;const response=await fetch(API+path,{...options,headers});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.message||data.error||"Request failed");return data}
@@ -17,17 +18,36 @@ async function loadConversations(){try{const data=await call("/conversations");c
 async function openConversation(id,title){active=id;$("thread-title").textContent=title;$("message").disabled=false;$("send-form").querySelector("button").disabled=false;$("attachmentInput").disabled=false;$("uploadAttachmentButton").disabled=false;document.querySelectorAll(".conversation").forEach(b=>b.classList.toggle("active",b.textContent===title));try{const data=await call("/conversations/"+encodeURIComponent(id)+"/messages");$("messages").replaceChildren();for(const m of data.messages||[]){const el=document.createElement("div");el.className="message"+(m.senderId===user.id?" mine":"");const who=document.createElement("small");who.textContent=m.sender||"Member";const body=document.createElement("div");body.textContent=m.body;el.append(who,body);$("messages").append(el)}if(!data.messages?.length)$("messages").innerHTML='<p class="muted">No messages yet. Start the conversation.</p>';$("messages").scrollTop=$("messages").scrollHeight;await loadAttachments(id)}catch(error){notice(error.message)}}
 function fileSize(bytes){return bytes<1024?bytes+" B":bytes<1024*1024?(bytes/1024).toFixed(1)+" KB":(bytes/1024/1024).toFixed(2)+" MB"}
 async function loadAttachments(conversationId){
- const box=$("attachments");box.replaceChildren();
+ const box=$("attachments");
+ for(const url of attachmentObjectUrls)URL.revokeObjectURL(url);
+ attachmentObjectUrls=[];
+ box.replaceChildren();
  try{
   const data=await call("/conversations/"+encodeURIComponent(conversationId)+"/attachments");
   if(!data.attachments?.length){const empty=document.createElement("small");empty.className="muted";empty.textContent="No shared files yet.";box.append(empty);return}
   const title=document.createElement("strong");title.textContent="SHARED FILES";box.append(title);
+  let previews=0;
   for(const file of data.attachments){
    const row=document.createElement("div");row.className="attachment-row";
    const info=document.createElement("div");const name=document.createElement("b");name.textContent=file.name;
    const meta=document.createElement("small");meta.textContent=file.sender+" · "+fileSize(file.sizeBytes);info.append(name,meta);
    const button=document.createElement("button");button.className="quiet";button.textContent="Download";button.addEventListener("click",()=>downloadAttachment(file.id,file.name));
    row.append(info,button);box.append(row);
+   if(/^image\/(jpeg|png|webp|gif)$/.test(file.mimeType||"")&&file.sizeBytes<=3*1024*1024&&previews<12){
+    previews++;
+    const preview=document.createElement("div");preview.className="attachment-preview";
+    const loading=document.createElement("small");loading.className="muted";loading.textContent="Loading image preview…";preview.append(loading);box.append(preview);
+    fetch(API+"/attachments/"+encodeURIComponent(file.id),{headers:{Authorization:"Bearer "+token}})
+     .then(response=>{if(!response.ok)throw new Error("Preview unavailable");return response.blob()})
+     .then(blob=>{
+      if(!blob.type.startsWith("image/"))throw new Error("Invalid image response");
+      const url=URL.createObjectURL(blob);attachmentObjectUrls.push(url);
+      const img=document.createElement("img");img.src=url;img.alt=file.name;img.loading="lazy";
+      img.addEventListener("error",()=>{preview.replaceChildren();const error=document.createElement("small");error.className="muted";error.textContent="Image preview unavailable.";preview.append(error)},{once:true});
+      preview.replaceChildren(img);
+     })
+     .catch(()=>{preview.replaceChildren();const error=document.createElement("small");error.className="muted";error.textContent="Image preview unavailable.";preview.append(error)});
+   }
   }
  }catch(error){const msg=document.createElement("small");msg.className="muted";msg.textContent="Could not load shared files: "+error.message;box.append(msg)}
 }
@@ -36,7 +56,7 @@ async function downloadAttachment(id,name){
   const response=await fetch(API+"/attachments/"+encodeURIComponent(id),{headers:{Authorization:"Bearer "+token}});
   if(!response.ok)throw new Error("Download failed");
   const blob=await response.blob(),url=URL.createObjectURL(blob),link=document.createElement("a");
-  link.href=url;link.download=name;document.body.append(link);link.click();link.remove();URL.revokeObjectURL(url);
+  link.href=url;link.download=name;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
  }catch(error){$("attachmentNotice").textContent=error.message}
 }
 $("uploadAttachmentButton").addEventListener("click",async()=>{
