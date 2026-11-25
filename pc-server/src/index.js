@@ -125,7 +125,7 @@ app.get("/api/v1/me", { preHandler: requireDevice }, async req => ({ device: req
 app.post("/api/v1/cloud/link", { preHandler: requireUser }, async (req,reply) => {
   const email=String(req.body?.email||"").trim().toLowerCase();
   const password=String(req.body?.password||"");
-  const cloudUrl=String(process.env.BITVOID_CLOUD_SYNC_URL||"").replace(/\\/$/,"");
+  const cloudUrl=String(process.env.BITVOID_CLOUD_SYNC_URL||"").replace(/\/$/,"");
   if(!cloudUrl || String(process.env.BITVOID_SYNC_SECRET||"").length<32) return reply.code(503).send({error:"cloud_not_configured",message:"Cloud URL and a shared sync secret of at least 32 characters must be configured on this campus server."});
   try {
     const login=await fetch(cloudUrl+"/api/v1/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password}),signal:AbortSignal.timeout(12000)});
