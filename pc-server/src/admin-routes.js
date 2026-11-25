@@ -128,7 +128,7 @@ export function registerAdminRoutes(app,db,sockets,serverInfo) {
     const files=db.prepare(`SELECT a.id,a.conversation_id AS conversationId,c.title AS conversationTitle,c.type,u.username AS sender,a.original_name AS name,a.mime_type AS mimeType,a.size_bytes AS sizeBytes,a.created_at AS createdAt
       FROM attachments a JOIN conversations c ON c.id=a.conversation_id JOIN users u ON u.id=a.sender_id ORDER BY a.created_at DESC LIMIT 500`).all();
     const totals=db.prepare("SELECT COUNT(*) AS count,COALESCE(SUM(size_bytes),0) AS bytes FROM attachments").get();
-    return {files,totals};
+    return {files,totals,limits:{maxFileBytes:8*1024*1024,maxTotalStorageBytes:Number(process.env.BITVOID_MAX_STORAGE_BYTES)||2*1024*1024*1024,maxConversationStorageBytes:Number(process.env.BITVOID_MAX_CONVERSATION_STORAGE_BYTES)||250*1024*1024,maxUserDailyUploadBytes:Number(process.env.BITVOID_MAX_USER_DAILY_UPLOAD_BYTES)||50*1024*1024}};
   });
   app.delete("/admin/api/media/:id",{preHandler:auth},async(req,reply)=>{
     const file=db.prepare("SELECT id,storage_name AS storageName,original_name AS name FROM attachments WHERE id=?").get(req.params.id);
