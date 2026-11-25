@@ -86,6 +86,13 @@ The response contains a device-scoped bearer token. Store it securely on the cli
 | GET | `/admin/api/devices` | Paired devices (admin session required) |
 | GET | `/admin/api/nodes` | Known network nodes (admin session required) |
 | GET | `/admin/api/activity` | Activity log (admin session required) |
+| GET | `/admin/api/conversations` | Conversation and group overview (admin session required) |
+| GET | `/admin/api/conversations/:id/messages` | Inspect members and latest 100 messages (admin session required) |
+| PATCH | `/admin/api/conversations/:id` | Rename a group (admin session required) |
+| DELETE | `/admin/api/conversations/:id/members/:userId` | Remove a group member (admin session required) |
+| GET | `/admin/api/settings` | Safe runtime and integration settings (admin session required) |
+| POST | `/admin/api/nodes/gateway/check` | Check ESP gateway health (admin session required) |
+| POST | `/admin/api/devices/:id/revoke` | Revoke a paired device (admin session required) |
 | GET | `/api/v1/gateway/info` | Gateway metadata |
 | GET | `/api/v1/health` | Health and uptime |
 | GET | `/api/v1/services` | Capability list |
