@@ -11,11 +11,13 @@ import { registerAdminRoutes, logAdminActivity } from "./admin-routes.js";
 import { createGatewayMonitor } from "./gateway-monitor.js";
 import { createCloudSync } from "./cloud-sync.js";
 import { registerClientRoutes } from "./client-routes.js";
-import { registerMediaRoutes } from "./media-routes.js";
+import { registerMediaRoutes, reconcileAttachmentStorage } from "./media-routes.js";
 import { registerAccountAuthRoutes } from "./account-auth.js";
 
 const app = Fastify({ logger: false, bodyLimit: 1024 * 1024 });
 const db = getDatabase();
+const mediaRecovery = await reconcileAttachmentStorage(db);
+if(mediaRecovery.missingMetadata||mediaRecovery.orphanFiles) console.warn("[BitVoid] Attachment storage reconciled:",mediaRecovery);
 const PORT = Number(process.env.PORT || 8787);
 const HOST = process.env.HOST || "0.0.0.0";
 const SERVER_NAME = process.env.BITVOID_SERVER_NAME || "BitVoid PC Server";
