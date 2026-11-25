@@ -3,6 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { adminLogin, adminSetup, adminSetupRequired, destroyAdminSession, getAdminSession } from "./admin-auth.js";
+import { getStateDirectory } from "./database.js";
 
 const here=path.dirname(fileURLToPath(import.meta.url));
 const webDir=path.resolve(here,"../dashboard");
@@ -122,6 +123,20 @@ export function registerAdminRoutes(app,db,sockets,serverInfo) {
     if(!serverInfo.gatewayMonitor)return {ok:false,status:"not-configured",error:"Gateway monitor unavailable."};
     await serverInfo.gatewayMonitor.check();
     return {ok:true,gateway:serverInfo.gatewayMonitor.getSnapshot()};
+  });
+  app.get("/admin/api/media",{preHandler:auth},async()=>{
+    const files=db.prepare(`SELECT a.id,a.conversation_id AS conversationId,c.title AS conversationTitle,c.type,u.username AS sender,a.original_name AS name,a.mime_type AS mimeType,a.size_bytes AS sizeBytes,a.created_at AS createdAt
+      FROM attachments a JOIN conversations c ON c.id=a.conversation_id JOIN users u ON u.id=a.sender_id ORDER BY a.created_at DESC LIMIT 500`).all();
+    const totals=db.prepare("SELECT COUNT(*) AS count,COALESCE(SUM(size_bytes),0) AS bytes FROM attachments").get();
+    return {files,totals};
+  });
+  app.delete("/admin/api/media/:id",{preHandler:auth},async(req,reply)=>{
+    const file=db.prepare("SELECT id,storage_name AS storageName,name FROM attachments WHERE id=?").get(req.params.id);
+    if(!file)return reply.code(404).send({error:"attachment_not_found"});
+    db.prepare("DELETE FROM attachments WHERE id=?").run(file.id);
+    try{fs.rmSync(path.join(getStateDirectory(),"uploads",file.storageName),{force:true});}catch(error){app.log.warn(error,"Could not remove attachment bytes");}
+    activity(db,"media.deleted",file.name+" · "+file.id);
+    return {ok:true,id:file.id};
   });
   app.get("/admin/api/activity",{preHandler:auth},async()=>({activity:db.prepare("SELECT id,event,detail,created_at AS createdAt FROM admin_activity ORDER BY id DESC LIMIT 100").all()}));
   app.log.info("BitVoid admin dashboard routes registered");
