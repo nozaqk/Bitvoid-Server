@@ -22,7 +22,7 @@ const PORT = Number(process.env.PORT || 8787);
 const HOST = process.env.HOST || "0.0.0.0";
 const SERVER_NAME = process.env.BITVOID_SERVER_NAME || "BitVoid PC Server";
 const PC_SERVER_ID = process.env.BITVOID_PC_SERVER_ID || "bv-pc-server-001";
-const PC_SERVER_SECRET = process.env.BITVOID_PC_SERVER_SECRET || process.env.BITVOID_SYNC_SECRET || "";
+const PC_SERVER_SECRET = process.env.BITVOID_PC_SERVER_SECRET || "";
 const adminCode = getOrCreateAdminCode();
 const adminSetupCode = ensureAdminSetupCode();
 const sockets = new Map();
@@ -142,11 +142,14 @@ app.post("/api/v1/cloud/link", { preHandler: requireUser }, async (req,reply) =>
   const cloudUrl=String(process.env.BITVOID_CLOUD_SYNC_URL||"").replace(/\/$/,"");
   if(!cloudUrl || PC_SERVER_SECRET.length<32) return reply.code(503).send({error:"cloud_not_configured",message:"Cloud URL and the registered PC server secret (at least 32 characters) must be configured."});
   try {
+    const expectedCloudId=process.env.BITVOID_CLOUD_SERVER_ID||"bv-cloud-server-001";
     const login=await fetch(cloudUrl+"/api/v1/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password}),signal:AbortSignal.timeout(12000)});
+    if(login.headers.get("x-bitvoid-server-id")!==expectedCloudId) return reply.code(502).send({error:"cloud_identity_mismatch",message:"The cloud server identity could not be verified."});
     const auth=await login.json().catch(()=>({}));
     if(!login.ok) return reply.code(401).send({error:"cloud_login_failed",message:auth.message||"Cloud sign-in failed."});
     const nodeId=PC_SERVER_ID;
     const linked=await fetch(cloudUrl+"/api/v1/sync/link-profile",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+auth.token,"X-BitVoid-Server-Id":PC_SERVER_ID,"X-BitVoid-Server-Key":PC_SERVER_SECRET},body:JSON.stringify({nodeId,localUserId:req.user.id}),signal:AbortSignal.timeout(12000)});
+    if(linked.headers.get("x-bitvoid-server-id")!==expectedCloudId) return reply.code(502).send({error:"cloud_identity_mismatch",message:"The cloud server identity could not be verified."});
     const result=await linked.json().catch(()=>({}));
     if(!linked.ok) return reply.code(linked.status).send(result);
     db.prepare("INSERT INTO cloud_identity_links(local_user_id,cloud_account_id,linked_at) VALUES(?,?,?) ON CONFLICT(local_user_id) DO UPDATE SET cloud_account_id=excluded.cloud_account_id,linked_at=excluded.linked_at").run(req.user.id,result.account.id,new Date().toISOString());
