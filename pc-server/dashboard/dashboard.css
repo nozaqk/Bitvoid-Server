@@ -103,3 +103,6 @@ footer{padding:26px 0 8px;color:#73808D;font:9px "JetBrains Mono",monospace;lett
 #gatewayDiagnostic{margin:12px 0 0;line-height:1.6}
 .text-btn:disabled{opacity:.55;cursor:wait}
 @media(max-width:700px){.member-chips{gap:5px}.conversation-inspector{margin-top:12px}}
+
+.danger-btn{border:1px solid #743B48;background:#2B171D;color:#FF9AAA;border-radius:7px;padding:6px 9px;font-size:9px;font-weight:700;white-space:nowrap}
+.danger-btn:hover{background:#3B1C25;border-color:var(--red)}
