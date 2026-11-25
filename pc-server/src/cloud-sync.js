@@ -2,8 +2,9 @@ import { randomUUID } from "node:crypto";
 
 export function createCloudSync(db, options = {}) {
   const baseUrl = String(options.url || "").replace(/\/$/,"");
-  const nodeId = options.nodeId || "bitvoid-campus-node";
+  const nodeId = options.nodeId || "bv-pc-server-001";
   const secret = options.secret || "";
+  const expectedCloudId = options.cloudServerId || "bv-cloud-server-001";
   const intervalMs = Math.max(5000, Number(options.intervalMs || 15000));
   let timer = null, running = false;
   const state = { configured:Boolean(baseUrl && secret.length >= 32), status:"disabled", lastSuccessAt:null, lastError:null, pushed:0, pulled:0 };
@@ -37,7 +38,7 @@ export function createCloudSync(db, options = {}) {
     if (!state.configured || running) return;
     running = true; state.status = "syncing"; state.lastError = null;
     try {
-      const headers = { "Content-Type":"application/json", "X-BitVoid-Sync-Secret":secret };
+      const headers = { "Content-Type":"application/json", "X-BitVoid-Server-Id":nodeId, "X-BitVoid-Server-Key":secret };
       const pending = db.prepare("SELECT event_id,entity_type,entity_id,revision,payload FROM sync_outbox ORDER BY created_at LIMIT 100").all();
       if (pending.length) {
         const events = pending.map(row=>({
@@ -48,6 +49,7 @@ export function createCloudSync(db, options = {}) {
           method:"POST", headers, body:JSON.stringify({nodeId,events}), signal:AbortSignal.timeout(10000)
         });
         if (!response.ok) throw new Error("Cloud push failed ("+response.status+").");
+        if (response.headers.get("x-bitvoid-server-id") !== expectedCloudId) throw new Error("Cloud server identity verification failed.");
         await response.json();
         const remove = db.prepare("DELETE FROM sync_outbox WHERE event_id=?");
         db.exec("BEGIN IMMEDIATE");
@@ -60,6 +62,7 @@ export function createCloudSync(db, options = {}) {
         headers, signal:AbortSignal.timeout(10000)
       });
       if (!response.ok) throw new Error("Cloud pull failed ("+response.status+").");
+      if (response.headers.get("x-bitvoid-server-id") !== expectedCloudId) throw new Error("Cloud server identity verification failed.");
       const data = await response.json();
       const insert = db.prepare("INSERT OR IGNORE INTO sync_inbox(sequence,event_id,source_node,entity_type,entity_id,revision,payload,created_at) VALUES(?,?,?,?,?,?,?,?)");
       const updateCursor = db.prepare("INSERT INTO sync_state(key,value) VALUES('cloud_cursor',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value");
