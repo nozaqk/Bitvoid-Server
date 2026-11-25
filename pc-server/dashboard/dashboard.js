@@ -46,7 +46,7 @@ async function loadSettings(){
  try{const data=await api("settings"),s=data.server,g=data.integrations.gateway,c=data.integrations.cloud,sec=data.security;
  const rows=pairs=>pairs.map(([k,v])=>'<div><span>'+esc(k)+'</span><b>'+esc(v??"—")+'</b></div>').join("");
  $("serverSettings").innerHTML=rows([["Server name",s.name],["Bind address",s.host],["Port",s.port],["Node.js",s.nodeVersion],["Platform",s.platform],["State directory",s.stateDirectory],["Uptime",duration(s.uptimeSeconds)]]);
- $("cloudStatus").textContent=c.configured?"CONNECTED":"NOT CONFIGURED";$("cloudSettings").innerHTML=rows([["Sync endpoint",c.url||"Not configured"],["Node ID",c.nodeId],["Shared secret",c.configured?"Configured · hidden":"Not configured"]]);
+ $("cloudStatus").textContent=c.configured?"CONFIGURED":"NOT CONFIGURED";$("cloudSettings").innerHTML=rows([["Sync endpoint",c.url||"Not configured"],["Node ID",c.nodeId],["Shared secret",c.configured?"Configured · hidden":"Not configured"]]);
  $("gatewaySettings").innerHTML=rows([["Gateway status",g.status],["Endpoint",g.endpoint],["Credentials",g.configured?"Configured · hidden":"Not configured"]]);$("gatewayDiagnostic").textContent=g.error||"Gateway status is healthy.";
  $("securitySettings").innerHTML=rows([["Admin session",sec.adminSessionHours+" hours"],["Session cookie",sec.sessionCookie],["Network scope","Local network"],["HTTPS","Not configured"]]);
  }catch(e){$("serverSettings").textContent=e.message;}
