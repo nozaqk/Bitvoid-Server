@@ -8,7 +8,7 @@ const db = new DatabaseSync(path.join(stateDir, "bitvoid.sqlite"));
 db.exec(`
 PRAGMA journal_mode=WAL;
 PRAGMA foreign_keys=ON;
-CREATE TABLE IF NOT EXISTS devices(id TEXT PRIMARY KEY,token_hash TEXT NOT NULL UNIQUE,created_at TEXT NOT NULL,last_seen TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS devices(id TEXT PRIMARY KEY,token_hash TEXT NOT NULL UNIQUE,created_at TEXT NOT NULL,last_seen TEXT NOT NULL,revoked_at TEXT);
 CREATE TABLE IF NOT EXISTS pairing_challenges(id TEXT PRIMARY KEY,device_id TEXT NOT NULL,created_at INTEGER NOT NULL,expires_at INTEGER NOT NULL,used INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY,username TEXT NOT NULL UNIQUE COLLATE NOCASE,device_id TEXT NOT NULL UNIQUE REFERENCES devices(id),created_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS conversations(id TEXT PRIMARY KEY,type TEXT NOT NULL CHECK(type IN ('direct','group')),title TEXT,created_at TEXT NOT NULL,created_by TEXT NOT NULL REFERENCES users(id));
@@ -21,5 +21,7 @@ CREATE INDEX IF NOT EXISTS idx_activity_created ON admin_activity(created_at);
 CREATE TABLE IF NOT EXISTS cloud_identity_links(local_user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,cloud_account_id TEXT NOT NULL UNIQUE,linked_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS cloud_entity_links(entity_type TEXT NOT NULL,local_entity_id TEXT NOT NULL,cloud_entity_id TEXT NOT NULL,revision INTEGER NOT NULL DEFAULT 1,PRIMARY KEY(entity_type,local_entity_id));
 `);
+const deviceColumns = db.prepare("PRAGMA table_info(devices)").all();
+if (!deviceColumns.some(column => column.name === "revoked_at")) db.exec("ALTER TABLE devices ADD COLUMN revoked_at TEXT");
 export const getDatabase = () => db;
 export const getStateDirectory = () => stateDir;
