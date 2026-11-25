@@ -48,7 +48,7 @@ Open `http://bitvoid.local:8787/app` on a phone or computer connected to the cam
 - Search for users and paired devices.
 - Conversation and group oversight, including member lists and inspection of the latest 100 messages per conversation.
 - Group administration: rename groups and remove members from the protected dashboard. Direct conversations remain read-only, and groups cannot be reduced below one member.
-- Conversation attachments: upload and download supported images, PDF, text, ZIP, audio and video files up to 8 MB per file. Attachments are stored locally under `.state/uploads/` with random storage names and private file permissions; conversation membership is required to list or download them.
+- Conversation attachments: upload and download supported images, PDF, text, ZIP, audio and video files up to 8 MB per file. Attachments are stored locally under `.state/uploads/` with random storage names and private file permissions; conversation membership is required to list or download them. The browser client also displays authenticated inline previews for JPEG, PNG, WebP and GIF images up to 3 MB each (up to 12 previews per conversation view).
 - Media administration: inspect recent attachment metadata and storage usage, search files, and permanently delete an attachment from the protected dashboard.
 - Server settings overview showing runtime, cloud-sync and ESP gateway configuration without revealing secret values.
 - On-demand ESP-12E gateway health check from the protected admin dashboard.
