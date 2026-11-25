@@ -35,6 +35,7 @@
    <button class="nav" data-page="users"><i>♙</i> Users <b id="navUsers">0</b></button>
    <button class="nav" data-page="devices"><i>▣</i> Devices</button>
    <button class="nav" data-page="conversations"><i>☷</i> Conversations</button>
+   <button class="nav" data-page="media"><i>▤</i> Media & files</button>
    <button class="nav" data-page="nodes"><i>⌘</i> Network nodes</button>
    <button class="nav" data-page="activity"><i>◷</i> Activity log</button>
    <button class="nav" data-page="settings"><i>⚙</i> Settings</button>
@@ -77,6 +78,14 @@
     <div class="table-wrap"><table><thead><tr><th>TYPE</th><th>CONVERSATION</th><th>CREATED BY</th><th>MEMBERS</th><th>MESSAGES</th><th>LAST MESSAGE</th><th>CREATED</th></tr></thead><tbody id="conversationsTable"></tbody></table></div>
    </div>
    <div class="panel conversation-inspector" id="conversationInspector"><div class="panel-head"><div><h3 id="conversationTitle">Conversation inspector</h3><p class="muted" id="conversationMeta">Select a conversation to inspect its members and recent messages</p></div><span class="tag">ADMIN INSPECTOR</span></div><div id="conversationAdminControls" class="conversation-admin hidden"><div class="group-title-editor"><label for="groupTitleInput">Group name</label><div><input id="groupTitleInput" maxlength="80" placeholder="Enter group name"><button class="primary" id="saveGroupTitleButton">Save name</button></div></div><p class="muted tiny">Group member administration</p><p class="muted tiny" id="groupAdminMessage" role="status"></p></div><div id="conversationMembers" class="member-chips"></div><div id="conversationMessages" class="activity-list"><p class="muted tiny">Messages will appear here after selecting a conversation.</p></div></div>
+  </section>
+  <section id="mediaPage" class="page hidden">
+   <div class="welcome-row"><div><h2>Attachment storage</h2><p class="muted">Review files shared in campus conversations and remove inappropriate or unwanted uploads.</p></div><div class="updated">STORAGE USED <b id="mediaStorage">0 B</b></div></div>
+   <div class="stats-grid media-stats"><article class="stat-card"><div class="stat-top"><span>Stored files</span><span class="stat-icon blue">▤</span></div><strong id="mediaCount">0</strong><small>All conversation attachments</small></article><article class="stat-card"><div class="stat-top"><span>Allowed maximum</span><span class="stat-icon green">⇧</span></div><strong>8 MB</strong><small>Per file upload</small></article></div>
+   <div class="panel"><div class="panel-head"><div><h3>Shared files</h3><p class="muted">Up to 500 most recent attachments. Deleting a file removes its stored copy for every conversation member.</p></div><div class="media-tools"><input class="search" id="mediaSearch" placeholder="Search files, users or chats…" aria-label="Search media"><button class="text-btn" id="refreshMediaButton">Refresh ↻</button></div></div>
+    <div class="table-wrap"><table><thead><tr><th>FILE</th><th>TYPE</th><th>CONVERSATION</th><th>UPLOADED BY</th><th>SIZE</th><th>DATE</th><th>ACTION</th></tr></thead><tbody id="mediaTable"></tbody></table></div>
+   </div>
+   <p class="muted tiny media-note">Files are stored locally in the server state directory under uploads/. Only authenticated members of a conversation can download its attachments.</p>
   </section>
   <section id="settingsPage" class="page hidden">
    <div class="node-grid">
