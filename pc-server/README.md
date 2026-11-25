@@ -46,7 +46,8 @@ Open `http://bitvoid.local:8787/app` on a phone or computer connected to the cam
 - Network node view for the PC coordinator and ESP-12E gateway.
 - Recent activity feed and activity log.
 - Search for users and paired devices.
-- Conversation and group oversight, including member lists and read-only inspection of the latest 100 messages per conversation.
+- Conversation and group oversight, including member lists and inspection of the latest 100 messages per conversation.
+- Group administration: rename groups and remove members from the protected dashboard. Direct conversations remain read-only, and groups cannot be reduced below one member.
 - Server settings overview showing runtime, cloud-sync and ESP gateway configuration without revealing secret values.
 - On-demand ESP-12E gateway health check from the protected admin dashboard.
 - Responsive dark interface for desktop and mobile screens.
