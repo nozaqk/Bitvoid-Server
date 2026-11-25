@@ -48,13 +48,15 @@ export function registerAccountAuthRoutes(app) {
     const salt = randomBytes(16).toString("base64url");
     const now = new Date().toISOString();
     const token = randomBytes(32).toString("base64url");
-    const tx = db.transaction(() => {
+    try {
+      db.exec("BEGIN IMMEDIATE");
       db.prepare("INSERT INTO devices(id,token_hash,created_at,last_seen) VALUES(?,?,?,?)").run(deviceId, hash(token), now, now);
       db.prepare("INSERT INTO users(id,username,device_id,created_at) VALUES(?,?,?,?)").run(id, username, deviceId, now);
       db.prepare("INSERT INTO account_credentials(user_id,password_hash,password_salt,master_recovery_hash,created_at,updated_at) VALUES(?,?,?,?,?,?)")
         .run(id, passwordHash(password, salt), salt, hash(masterPassphrase.toLowerCase()), now, now);
-    });
-    try { tx(); } catch (error) {
+      db.exec("COMMIT");
+    } catch (error) {
+      try { db.exec("ROLLBACK"); } catch { /* transaction may not have started */ }
       if (String(error?.code).startsWith("SQLITE_CONSTRAINT")) return bad(reply, 409, "account_exists", "That username is already registered.");
       throw error;
     }
