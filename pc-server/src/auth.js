@@ -13,8 +13,9 @@ export function getOrCreateAdminCode() {
   return code;
 }
 export function createPairingChallenge(deviceId) {
-  if (db.prepare("SELECT 1 FROM devices WHERE id=?").get(deviceId)) {
-    const error = new Error("This device is already paired. Use a new device ID or implement token rotation.");
+  const existing = db.prepare("SELECT revoked_at AS revokedAt FROM devices WHERE id=?").get(deviceId);
+  if (existing && !existing.revokedAt) {
+    const error = new Error("This device is already paired.");
     error.statusCode = 409;
     throw error;
   }
@@ -27,13 +28,13 @@ export function approvePairing(challengeId, adminCode, expectedCode) {
   const c = db.prepare("SELECT * FROM pairing_challenges WHERE id=?").get(challengeId);
   if (!c || c.used || c.expires_at < Date.now()) { const e = new Error("Pairing challenge is missing, expired or already used."); e.statusCode = 400; throw e; }
   const token = randomBytes(32).toString("base64url"), now = new Date().toISOString();
-  db.prepare("INSERT INTO devices(id,token_hash,created_at,last_seen) VALUES(?,?,?,?)").run(c.device_id, hash(token), now, now);
+  db.prepare("INSERT INTO devices(id,token_hash,created_at,last_seen,revoked_at) VALUES(?,?,?,?,NULL) ON CONFLICT(id) DO UPDATE SET token_hash=excluded.token_hash,last_seen=excluded.last_seen,revoked_at=NULL").run(c.device_id, hash(token), now, now);
   db.prepare("UPDATE pairing_challenges SET used=1 WHERE id=?").run(challengeId);
   return { deviceId: c.device_id, deviceToken: token, tokenType: "Bearer" };
 }
 export function authenticateToken(token) {
   if (!token) return null;
-  const d = db.prepare("SELECT id FROM devices WHERE token_hash=?").get(hash(token));
+  const d = db.prepare("SELECT id FROM devices WHERE token_hash=? AND revoked_at IS NULL").get(hash(token));
   if (!d) return null;
   db.prepare("UPDATE devices SET last_seen=? WHERE id=?").run(new Date().toISOString(), d.id);
   return d;
