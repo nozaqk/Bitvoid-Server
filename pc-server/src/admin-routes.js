@@ -131,7 +131,7 @@ export function registerAdminRoutes(app,db,sockets,serverInfo) {
     return {files,totals};
   });
   app.delete("/admin/api/media/:id",{preHandler:auth},async(req,reply)=>{
-    const file=db.prepare("SELECT id,storage_name AS storageName,name FROM attachments WHERE id=?").get(req.params.id);
+    const file=db.prepare("SELECT id,storage_name AS storageName,original_name AS name FROM attachments WHERE id=?").get(req.params.id);
     if(!file)return reply.code(404).send({error:"attachment_not_found"});
     db.prepare("DELETE FROM attachments WHERE id=?").run(file.id);
     try{fs.rmSync(path.join(getStateDirectory(),"uploads",file.storageName),{force:true});}catch(error){app.log.warn(error,"Could not remove attachment bytes");}
