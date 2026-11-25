@@ -54,7 +54,7 @@ Open `http://bitvoid.local:8787/app` on a phone or computer connected to the cam
 - On-demand ESP-12E gateway health check from the protected admin dashboard.
 - Responsive dark interface for desktop and mobile screens.
 
-Online means a user currently has an authenticated WebSocket connection to the PC server. The PC server polls the ESP protected /admin/api/status endpoint every 10 seconds using HTTP Basic Authentication. Set BITVOID_GATEWAY_URL, BITVOID_GATEWAY_ADMIN_USERNAME and BITVOID_GATEWAY_ADMIN_PASSWORD in .env; credentials must match the ESP firmware config.h. The PC dashboard then displays actual online/offline status, last check/last seen, response latency, connected clients, uptime, free heap, SSID, MAC and firmware core version. Missing credentials are reported as Not configured; unreachable ESP or rejected credentials are reported as Offline with a diagnostic. The ESP admin password is never returned by the PC dashboard API.
+Online means a user currently has an authenticated WebSocket connection to the PC server. The PC server polls the ESP protected /api/v1/internal/status endpoint every 10 seconds using the BVT-1 PC server ID and dedicated ESP trust key. Set BITVOID_GATEWAY_URL, BITVOID_PC_SERVER_ID, BITVOID_ESP_TRUST_SECRET and BITVOID_GATEWAY_ID in .env; the PC ID and ESP trust key must match config.h. The PC dashboard verifies both the ESP response server ID header and the gatewayId field before showing telemetry. Missing trust credentials are reported as Not configured; unreachable ESP or rejected identities are reported as Offline with a diagnostic.
 
 ## Pair a device
 
