@@ -105,7 +105,7 @@ app.get("/api/v1/services", async () => ({ services: [
 ]}));
 app.get("/api/v1/devices", { preHandler: requireDevice }, async () => ({ devices: db.prepare("SELECT id,created_at AS createdAt,last_seen AS lastSeen FROM devices ORDER BY created_at").all() }));
 app.get("/api/node", async (_req, reply) => {
-  reply.header("X-BitVoid-Node","1").header("X-BitVoid-Protocol","2").header("X-BitVoid-Identity","local-identity-v1");
+  reply.header("X-BitVoid-Node","1").header("X-BitVoid-Protocol","2").header("X-BitVoid-Identity","BVT-1");
   return { service: "bitvoid", protocolVersion: 2, nodeId: PC_SERVER_ID, nodeType: "pc-coordinator", coordinator: true, portalAvailable: false };
 });
 app.get("/api/mesh/nodes", async () => ({ service: "bitvoid", protocolVersion: 2, nodes: [{ nodeId: PC_SERVER_ID, nodeType: "pc-coordinator", coordinator: true }] }));
