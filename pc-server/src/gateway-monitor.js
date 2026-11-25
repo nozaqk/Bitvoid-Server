@@ -8,11 +8,14 @@ export function createGatewayMonitor({
   url = process.env.BITVOID_GATEWAY_URL || DEFAULT_GATEWAY_URL,
   username = process.env.BITVOID_GATEWAY_ADMIN_USERNAME || "",
   password = process.env.BITVOID_GATEWAY_ADMIN_PASSWORD || "",
+  pcServerId = process.env.BITVOID_PC_SERVER_ID || "bv-pc-server-001",
+  pcServerSecret = process.env.BITVOID_PC_SERVER_SECRET || process.env.BITVOID_SYNC_SECRET || "",
+  expectedGatewayId = process.env.BITVOID_GATEWAY_ID || "bv-esp12e-gateway-001",
   intervalMs = 10000,
   timeoutMs = 3000
 } = {}) {
-  const endpoint = new URL("/admin/api/status", url).toString();
-  const configured = Boolean(username && password);
+  const endpoint = new URL("/api/v1/internal/status", url).toString();
+  const configured = Boolean(pcServerId && pcServerSecret.length >= 32 && expectedGatewayId);
   let snapshot = {
     configured,
     status: configured ? "checking" : "not-configured",
@@ -21,7 +24,7 @@ export function createGatewayMonitor({
     lastSeenAt: null,
     latencyMs: null,
     telemetry: null,
-    error: configured ? "Waiting for first gateway check." : "Set BITVOID_GATEWAY_ADMIN_USERNAME and BITVOID_GATEWAY_ADMIN_PASSWORD in the PC server environment."
+    error: configured ? "Waiting for first gateway check." : "Set BITVOID_PC_SERVER_ID, BITVOID_PC_SERVER_SECRET (32+ characters), and BITVOID_GATEWAY_ID in the PC server environment."
   };
   let stopped = false;
   let timer = null;
@@ -34,7 +37,7 @@ export function createGatewayMonitor({
     try {
       const response = await fetch(endpoint, {
         method: "GET",
-        headers: { Authorization: basicAuth(username, password), Accept: "application/json" },
+        headers: { "X-BitVoid-Server-Id":pcServerId, "X-BitVoid-Server-Key":pcServerSecret, Accept:"application/json" },
         signal: AbortSignal.timeout(timeoutMs),
         cache: "no-store"
       });
@@ -45,8 +48,9 @@ export function createGatewayMonitor({
         snapshot = { ...snapshot, status: "offline", checkedAt: new Date().toISOString(), latencyMs: Date.now() - started, error: message };
         return;
       }
+      if (response.headers.get("x-bitvoid-server-id") !== expectedGatewayId) throw new Error("ESP gateway identity verification failed.");
       const data = await response.json();
-      if (data.status !== "online" || typeof data.gatewayId !== "string" || typeof data.uptimeSeconds !== "number") {
+      if (data.status !== "online" || data.gatewayId !== expectedGatewayId || typeof data.uptimeSeconds !== "number") {
         throw new Error("Gateway returned an unexpected status payload.");
       }
       const checkedAt = new Date().toISOString();
