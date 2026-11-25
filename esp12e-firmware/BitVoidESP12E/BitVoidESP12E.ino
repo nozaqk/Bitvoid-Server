@@ -5,7 +5,7 @@
 #include <ArduinoJson.h>
 #include "config.h"
 
-#if !defined(BITVOID_AP_SSID) || !defined(BITVOID_AP_PASSWORD) || !defined(BITVOID_GATEWAY_ID) || !defined(BITVOID_PC_SERVER_ID) || !defined(BITVOID_PC_SERVER_SECRET) || !defined(BITVOID_ADMIN_USERNAME) || !defined(BITVOID_ADMIN_PASSWORD)
+#if !defined(BITVOID_AP_SSID) || !defined(BITVOID_AP_PASSWORD) || !defined(BITVOID_GATEWAY_ID) || !defined(BITVOID_PC_SERVER_ID) || !defined(BITVOID_ESP_TRUST_SECRET) || !defined(BITVOID_ADMIN_USERNAME) || !defined(BITVOID_ADMIN_PASSWORD)
 #error "Create config.h from config.example.h and set Wi-Fi and dashboard credentials."
 #endif
 
