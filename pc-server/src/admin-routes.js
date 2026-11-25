@@ -1,13 +1,9 @@
 import fs from "node:fs";
 import { createHash, randomBytes } from "node:crypto";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { adminLogin, adminSetup, adminSetupRequired, destroyAdminSession, getAdminSession } from "./admin-auth.js";
 import { getStateDirectory } from "./database.js";
 
-const here=path.dirname(fileURLToPath(import.meta.url));
-const webDir=path.resolve(here,"../dashboard");
-const readAsset=name=>fs.readFileSync(path.join(webDir,name));
 const cookieName="bv_admin";
 const cookieValue=req=>String(req.headers.cookie||"").split(";").map(v=>v.trim()).find(v=>v.startsWith(cookieName+"="))?.slice(cookieName.length+1)||"";
 const setCookie=(reply,token)=>reply.header("Set-Cookie",cookieName+"="+token+"; HttpOnly; SameSite=Strict; Path=/admin; Max-Age=43200");
@@ -18,10 +14,6 @@ const activity=(db,event,detail)=>db.prepare("INSERT INTO admin_activity(event,d
 
 export function registerAdminRoutes(app,db,sockets,serverInfo) {
   const attempts=new Map();
-  app.get("/admin",async(_req,reply)=>reply.type("text/html; charset=utf-8").send(readAsset("index.html")));
-  app.get("/admin/assets/dashboard.css",async(_req,reply)=>reply.type("text/css; charset=utf-8").send(readAsset("dashboard.css")));
-  app.get("/admin/assets/dashboard.js",async(_req,reply)=>reply.type("text/javascript; charset=utf-8").send(readAsset("dashboard.js")));
-  app.get("/admin/assets/bitvoid-logo.jpg",async(_req,reply)=>reply.type("image/jpeg").send(readAsset("assets/bitvoid-logo.jpg")));
   app.get("/admin/api/session",async(req,reply)=>{const session=getAdminSession(cookieValue(req));return {authenticated:!!session,username:session?.username||null,setupRequired:adminSetupRequired()};});
   app.post("/admin/api/setup",async(req,reply)=>{
     try { if(!adminSetupRequired())return reply.code(409).send({error:"setup_complete"}); const account=adminSetup(req.body?.setupCode,req.body?.username,req.body?.password); activity(db,"admin.created",account.username); const login=adminLogin(account.username,req.body.password); setCookie(reply,login.token); return {ok:true,username:login.username}; }
@@ -140,6 +132,6 @@ export function registerAdminRoutes(app,db,sockets,serverInfo) {
     return {ok:true,id:file.id};
   });
   app.get("/admin/api/activity",{preHandler:auth},async()=>({activity:db.prepare("SELECT id,event,detail,created_at AS createdAt FROM admin_activity ORDER BY id DESC LIMIT 100").all()}));
-  app.log.info("BitVoid admin dashboard routes registered");
+  app.log.info("BitVoid private management API routes registered (no web dashboard)");
 }
 export { activity as logAdminActivity };

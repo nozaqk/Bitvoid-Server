@@ -1,183 +1,42 @@
 # BitVoid PC Server
 
-Node.js 22.13+ server for Windows and Linux. It hosts the BitVoid API, local SQLite database, WebSocket messaging, and the protected PC administrator dashboard.
+The PC server is a **backend service only**. It does not provide a browser messaging client or a web administration dashboard. The Android BitVoid app is the only user interface.
 
-## Separate local addresses
+## Responsibilities
 
-| Component | URL | Purpose |
-|---|---|---|
-| Main BitVoid application/API | `http://bitvoid.local:8787` | API used by BitVoid clients |
-| Campus browser client | `http://bitvoid.local:8787/app` | Local device pairing and campus text messaging |
-| PC server administrator | `http://pc-server.local:8787/admin` | PC server management; protected by the PC dashboard account |
-| ESP gateway administrator | `http://esp-server.local/admin` | ESP-12E management; protected by separate ESP credentials |
+- Local BitVoid API and device pairing
+- SQLite account, device, conversation and message persistence
+- WebSocket messaging events
+- Attachment upload and download APIs
+- Authenticated PC-to-cloud synchronization
+- Authenticated ESP-12E gateway health monitoring
 
-The PC process advertises `bitvoid.local` and `pc-server.local` over mDNS using Bonjour. The ESP firmware independently advertises `esp-server.local`. These names work on devices whose network stack supports mDNS and while all devices are on the same local Wi-Fi network. If name resolution is unavailable, use the PC's LAN IP printed in the terminal as a fallback; the ESP dashboard fallback is `http://192.168.4.1/admin`.
+## Run
 
-The PC dashboard is deliberately not the main application URL. It is served at the dedicated `pc-server.local:8787/admin` address and uses its own first-run administrator account. The ESP dashboard uses its own credentials configured in the ESP firmware's untracked `config.h`.
+Requires Node.js 22.13 or newer.
 
-## Connect Android clients through the ESP-12E
-
-The ESP-12E is the Wi-Fi access point and discovery controller; the PC server is the BitVoid application/API host. The ESP-12E does not host chat, accounts, media, or audio calls.
-
-1. Connect the computer running this PC server to the ESP Wi-Fi network (default SSID `BitVoid_Local`).
-2. Start this PC server. It listens on `0.0.0.0:8787`.
-3. Connect Android phones to the same ESP Wi-Fi network.
-4. Open BitVoid. Android discovery scans local Wi-Fi devices on port `8787`, verifies `/api/node`, and selects the PC server as the local app gateway.
-5. If the app remains offline, test `http://192.168.4.1/api/v1/health` on the phone, then test `http://<PC-IP-on-ESP-WiFi>:8787/health`. Allow inbound TCP port `8787` in Windows Firewall on the Private network profile.
-
-Connecting only the phone to the ESP access point is not enough: the PC running this server must also be connected to that same Wi-Fi and the server process must be running.
-
-## Install and run
-
-```bash
-cd pc-server
-copy .env.example .env
-# Edit .env and enter the ESP dashboard username/password
+```powershell
 npm install
 npm run check
 npm start
 ```
 
-Requires Node.js 22.13 or newer. On first start, the server creates a one-time PC dashboard setup code in `.state/admin-setup-code.txt` and prints it in the PC terminal. Open the PC dashboard, enter that code, choose an administrator username, and create a password of at least 12 characters. The setup code is deleted after successful setup. Keep the `.state/` directory private.
-
-The dashboard uses an HttpOnly, SameSite=Strict session cookie, in-memory 12-hour sessions, password hashing with Node's scrypt, and basic login-attempt throttling. Restarting the server ends all dashboard sessions. Do not expose this HTTP dashboard to the public internet; it is intended for a trusted local network. Add TLS and stronger operational controls before remote/public deployment.
-
-## Campus browser client
-
-Open `http://bitvoid.local:8787/app` on a phone or computer connected to the campus Wi-Fi. The browser requests a short-lived device-pairing challenge; enter the administrator pairing code printed in the PC terminal, then choose a local username. The browser stores its device bearer token in that browser profile and can then create direct conversations and send/read text messages. This client talks only to the campus PC server; it does not require internet access. Local profiles are marked pending cloud link until a cloud account-linking flow is completed.
-
-## Dashboard features
-
-- Password-protected administrator sign-in and first-run setup.
-- Overview cards for registered users, live connected users, paired devices and known nodes.
-- Live dashboard refresh every five seconds.
-- 24-hour message traffic chart.
-- Service health and server uptime/runtime information.
-- User table with online/offline status, IDs and registration time.
-- Paired device table with assigned username, last-seen information and administrator device revocation. Revoking invalidates the bearer token and closes active WebSocket sessions; the device must be paired again with the PC pairing code.
-- Network node view for the PC coordinator and ESP-12E gateway.
-- Recent activity feed and activity log.
-- Search for users and paired devices.
-- Conversation and group oversight, including member lists and inspection of the latest 100 messages per conversation.
-- Group administration: rename groups and remove members from the protected dashboard. Direct conversations remain read-only, and groups cannot be reduced below one member.
-- Conversation attachments: upload and download supported images, PDF, text, ZIP, audio and video files up to 8 MB per file. Default quotas are 2 GB total server storage, 250 MB per conversation and 50 MB uploaded per user per UTC day; these can be overridden with environment variables. Quota checks are performed atomically before the file is written. At startup, storage reconciliation removes unreferenced upload files and clears database records whose files are missing. The dashboard displays server-wide quota usage and all configured limits. Attachments are stored locally under `.state/uploads/` with random storage names and private file permissions; conversation membership is required to list or download them. The browser client also displays authenticated inline previews for JPEG, PNG, WebP and GIF images up to 3 MB each (up to 12 previews per conversation view).
-- Media administration: inspect recent attachment metadata and storage usage, search files, and permanently delete an attachment from the protected dashboard.
-- Server settings overview showing runtime, cloud-sync and ESP gateway configuration without revealing secret values.
-- On-demand ESP-12E gateway health check from the protected admin dashboard.
-- Responsive dark interface for desktop and mobile screens.
-
-Online means a user currently has an authenticated WebSocket connection to the PC server. The PC server polls the ESP protected /api/v1/internal/status endpoint every 10 seconds using the BVT-1 PC server ID and dedicated ESP trust key. Set BITVOID_GATEWAY_URL, BITVOID_PC_SERVER_ID, BITVOID_ESP_TRUST_SECRET and BITVOID_GATEWAY_ID in .env; the PC ID and ESP trust key must match config.h. The PC dashboard verifies both the ESP response server ID header and the gatewayId field before showing telemetry. Missing trust credentials are reported as Not configured; unreachable ESP or rejected identities are reported as Offline with a diagnostic.
-
-## Pair a device
-
-Request a short-lived challenge:
-
-```http
-POST /api/v1/pairing/request
-Content-Type: application/json
-
-{"deviceId":"android-phone-01"}
-```
-
-Approve it using the one-time administrator pairing code printed in the PC terminal:
-
-```http
-POST /api/v1/pairing/approve
-Content-Type: application/json
-
-{"challengeId":"<challengeId>","adminCode":"<terminal-code>"}
-```
-
-The response contains a device-scoped bearer token. Store it securely on the client; the server stores only its SHA-256 hash. This bootstrap uses a terminal-shared administrator code, not physical-button or public-key pairing. Harden this before production use.
-
-## API
-
-| Method | Path | Purpose |
-|---|---|---|
-| GET | `/admin` | Protected PC administrator dashboard |
-| GET | `/admin/api/overview` | Dashboard metrics (admin session required) |
-| GET | `/admin/api/users` | User list (admin session required) |
-| GET | `/admin/api/devices` | Paired devices (admin session required) |
-| GET | `/admin/api/nodes` | Known network nodes (admin session required) |
-| GET | `/admin/api/activity` | Activity log (admin session required) |
-| GET | `/admin/api/conversations` | Conversation and group overview (admin session required) |
-| GET | `/admin/api/conversations/:id/messages` | Inspect members and latest 100 messages (admin session required) |
-| PATCH | `/admin/api/conversations/:id` | Rename a group (admin session required) |
-| DELETE | `/admin/api/conversations/:id/members/:userId` | Remove a group member (admin session required) |
-| GET | `/admin/api/media` | List recent attachment metadata, storage totals and quota limits (admin session required) |
-| DELETE | `/admin/api/media/:id` | Permanently delete an attachment (admin session required) |
-| POST | `/api/v1/conversations/:id/attachments` | Upload a file as `application/octet-stream` with `X-BitVoid-File-Name` and `X-BitVoid-File-Type` headers (conversation member required) |
-| GET | `/api/v1/conversations/:id/attachments` | List conversation attachments (conversation member required) |
-| GET | `/api/v1/attachments/:id` | Download an attachment (conversation member required) |
-| GET | `/admin/api/settings` | Safe runtime and integration settings (admin session required) |
-| POST | `/admin/api/nodes/gateway/check` | Check ESP gateway health (admin session required) |
-| POST | `/admin/api/devices/:id/revoke` | Revoke a paired device (admin session required) |
-| GET | `/api/v1/gateway/info` | Gateway metadata |
-| GET | `/api/v1/health` | Health and uptime |
-| GET | `/api/v1/services` | Capability list |
-| GET | `/api/v1/devices` | Paired device list |
-| POST | `/api/v1/auth/register` | Create username/password account and issue one-time master recovery passphrase |
-| POST | `/api/v1/auth/login` | Username/password account login |
-| POST | `/api/v1/auth/recover` | Reset password using the 44-character hexadecimal master passphrase |
-| POST | `/api/v1/auth/password/change` | Change password for an authenticated account |
-| POST | `/api/v1/pairing/request` | Create 120-second challenge |
-| POST | `/api/v1/pairing/approve` | Approve and issue device token |
-| POST | `/api/v1/users/register` | Register paired device username |
-| GET | `/api/v1/me` | Current device and user |
-| POST | `/api/v1/conversations` | Create direct or group conversation |
-| GET | `/api/v1/conversations` | List user's conversations |
-| GET | `/api/v1/conversations/:id/messages` | Read history |
-| POST | `/api/v1/conversations/:id/messages` | Send a message |
-| WS | `/api/v1/events?token=...` | Authenticated real-time events |
-
-## BitVoid Trust Protocol (BVT-1)
-
-Server-to-server operations require both a registered server ID and its matching private key. IDs are identifiers, not passwords. The PC server uses separate secrets for the cloud and ESP gateway.
-
-1. In pc-server/, copy .env.example to .env.
-2. Generate two independent random secrets of at least 32 characters. In Windows PowerShell, run:
-   `$rng = [Security.Cryptography.RandomNumberGenerator]::Create(); $bytes = New-Object byte[] 32; $rng.GetBytes($bytes); ($bytes | ForEach-Object { $_.ToString("x2") }) -join ""`
-   Run it twice; use one value for `BITVOID_PC_SERVER_SECRET` and a different value for `BITVOID_ESP_TRUST_SECRET`.
-3. In the cloud service environment, set `BITVOID_SERVER_ID=bv-cloud-server-001` and `BITVOID_TRUSTED_SERVER_KEYS` to a JSON object mapping `bv-pc-server-001` to the exact `BITVOID_PC_SERVER_SECRET` value.
-4. In pc-server/.env, set `BITVOID_PC_SERVER_ID=bv-pc-server-001`, `BITVOID_PC_SERVER_SECRET` to the cloud trust key, and `BITVOID_ESP_TRUST_SECRET` to the separate ESP trust key. Set `BITVOID_CLOUD_SERVER_ID=bv-cloud-server-001`.
-5. Copy `config.example.h` to `config.h`. Set `BITVOID_GATEWAY_ID=bv-esp12e-gateway-001`, `BITVOID_PC_SERVER_ID=bv-pc-server-001`, and `BITVOID_ESP_TRUST_SECRET` to the exact ESP trust key from pc-server/.env. Keep config.h private.
-6. Set the ESP Wi-Fi and admin dashboard credentials in config.h. The dashboard credentials are for human administrators; they are not the PC server trust key.
-7. Ensure the PC is connected to the ESP access point, then restart the PC server and flash the ESP firmware. The PC polls the authenticated `/api/v1/internal/status` endpoint every 10 seconds.
-
-The cloud API rejects missing, unknown or incorrectly authenticated server IDs and verifies that the requested sync node ID matches the authenticated ID. The PC verifies the cloud server ID in response headers. The ESP accepts internal telemetry requests only from the configured PC server ID and matching ESP trust key. The ESP gateway ID is checked against the expected ID by the PC. Keep all secrets out of GitHub and rotate them if exposed. Use HTTPS for the cloud URL; the ESP local link remains HTTP and should be confined to the WPA2-protected gateway network.
+The server listens on `0.0.0.0:8787`. Android clients connect to the API at `http://bitvoid.local:8787` when mDNS is available, or to the PC's LAN IP on port 8787.
 
 ## ESP-12E network
 
-1. Flash the sibling `esp12e-firmware/` sketch with its own dashboard credentials.
-2. Connect the PC to the ESP-12E SSID.
+1. Configure and flash the ESP-12E using `../esp12e-firmware/BitVoidESP12E`.
+2. Connect the PC to the ESP access point (default SSID: `BitVoid_Local`).
 3. Start this server.
-4. Use `http://bitvoid.local:8787` for the main BitVoid service and `http://pc-server.local:8787/admin` for PC administration.
-5. Open `http://esp-server.local/admin` for ESP gateway administration.
-6. If mDNS does not resolve, use the printed PC LAN IP or `http://192.168.4.1/admin` for the ESP.
+4. Connect Android phones to the same Wi-Fi and open the BitVoid app.
+5. Allow inbound TCP port 8787 through Windows Firewall on the private network.
 
-If Windows Firewall prompts for Node.js, allow it on Private networks only. mDNS discovery may also require allowing Bonjour/mDNS multicast on the Private network. Do not create a public-network exception.
+The ESP is a Wi-Fi/discovery gateway; the PC hosts the local application API. The ESP does not run the BitVoid app or a website.
 
-## Limitations and security notes
+## Trust configuration
 
-This remains the first standalone server milestone. It does not yet implement all legacy Android-hosted server routes, complete channel semantics, media streaming, WebRTC signaling/audio, push notifications or automatic Android gateway discovery. It is not yet a drop-in replacement for the full Android backend.
+Configure `BITVOID_PC_SERVER_ID`, `BITVOID_PC_SERVER_SECRET`, `BITVOID_ESP_TRUST_SECRET`, `BITVOID_GATEWAY_ID`, and `BITVOID_CLOUD_SERVER_ID` in the private `.env` file. Use separate random 32+ character secrets for cloud and ESP trust. The cloud server must register the PC server ID and matching cloud secret.
 
-Admin sessions are stored in memory and expire after 12 hours. HTTP and WebSocket traffic are unencrypted on the local network. ESP HTTP Basic Authentication is also unencrypted without TLS. Do not expose either dashboard or service to the public internet.
-
-Node's built-in `node:sqlite` requires Node.js 22.13+. Some Node releases print an experimental warning. Source has not been compiled on the target PC or flashed/tested on physical ESP-12E hardware.
+The private `/admin/api/*` endpoints are backend management APIs only; no web dashboard is shipped or served. The ESP internal status endpoint is authenticated with the BVT-1 PC server identity and key.
 
 No GitHub Actions workflows are used.
-
-
-### Account authentication and recovery
-
-The PC server supports the same account endpoints as BitVoid Cloud. Registration accepts a username and password (minimum 10 characters) and returns a 44-character hexadecimal master passphrase exactly once. The server stores a scrypt password verifier and a SHA-256 lookup digest of the high-entropy recovery secret; it never stores the master passphrase itself. Recovery accepts the master passphrase and a new password and does not require the username. Keep an offline copy of the master passphrase. These local accounts are stored on this PC server; they are not automatically synchronized with cloud account credentials.
-
-
-### Attachment quota configuration
-
-Optional environment variables in `.env` (values are bytes):
-- `BITVOID_MAX_STORAGE_BYTES`: server-wide attachment storage cap (default 2 GiB).
-- `BITVOID_MAX_CONVERSATION_STORAGE_BYTES`: per-conversation attachment cap (default 250 MiB).
-- `BITVOID_MAX_USER_DAILY_UPLOAD_BYTES`: per-user upload allowance per UTC day (default 50 MiB).
-
-The 8 MiB per-file limit remains fixed. When a quota is reached, the API returns a structured `storage_quota_exceeded` or `upload_quota_exceeded` response. Deleting attachments frees the corresponding quota immediately. Quota checks use a SQLite write transaction so concurrent uploads cannot both pass against the same remaining capacity.

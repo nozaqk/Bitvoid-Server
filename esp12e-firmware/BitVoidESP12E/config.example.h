@@ -11,7 +11,3 @@
 #define BITVOID_PC_SERVER_ID "bv-pc-server-001"
 #define BITVOID_ESP_TRUST_SECRET "REPLACE_WITH_A_UNIQUE_ESP_TRUST_SECRET"
 
-// Independent ESP gateway dashboard credentials (HTTP Basic Authentication).
-// Use a unique username and a password of at least 12 characters.
-#define BITVOID_ADMIN_USERNAME "admin"
-#define BITVOID_ADMIN_PASSWORD "CHANGE_THIS_ADMIN_PASSWORD"
