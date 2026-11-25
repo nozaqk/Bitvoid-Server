@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { createHash, randomBytes } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { adminLogin, adminSetup, adminSetupRequired, destroyAdminSession, getAdminSession } from "./admin-auth.js";
@@ -41,12 +42,27 @@ export function registerAdminRoutes(app,db,sockets,serverInfo) {
     const recentMessages=db.prepare("SELECT substr(created_at,1,13) AS hour,COUNT(*) AS count FROM messages WHERE created_at>=? GROUP BY hour ORDER BY hour").all(new Date(Date.now()-24*60*60*1000).toISOString());
     const hourly=Array.from({length:24},(_,i)=>{const d=new Date(Date.now()-(23-i)*3600000);const key=d.toISOString().slice(0,13);return {label:d.toLocaleTimeString("en",{hour:"2-digit",hour12:false}),count:recentMessages.find(r=>r.hour===key)?.count||0};});
     const userRows=db.prepare("SELECT id,username,device_id AS deviceId,created_at AS createdAt FROM users ORDER BY created_at DESC").all().map(u=>({...u,online:(sockets.get(u.id)?.size||0)>0,connections:sockets.get(u.id)?.size||0}));
-    const deviceRows=db.prepare("SELECT d.id,d.created_at AS createdAt,d.last_seen AS lastSeen,u.username FROM devices d LEFT JOIN users u ON u.device_id=d.id ORDER BY d.last_seen DESC").all().map(d=>({...d,online:userRows.some(u=>u.deviceId===d.id&&u.online)}));
+    const deviceRows=db.prepare("SELECT d.id,d.created_at AS createdAt,d.last_seen AS lastSeen,d.revoked_at AS revokedAt,u.username FROM devices d LEFT JOIN users u ON u.device_id=d.id ORDER BY d.last_seen DESC").all().map(d=>({...d,online:userRows.some(u=>u.deviceId===d.id&&u.online)}));
     const activityRows=db.prepare("SELECT id,event,detail,created_at AS createdAt FROM admin_activity ORDER BY id DESC LIMIT 12").all();
     return {server:{name:serverInfo.name,uptimeSeconds:Math.floor(process.uptime()),nodeVersion:process.version,platform:process.platform,startedAt:new Date(Date.now()-process.uptime()*1000).toISOString()},stats:{users,online,devices,onlineDevices:deviceRows.filter(d=>d.online).length,conversations,messages,nodes:2},messagesPerHour:hourly,users:userRows,devices:deviceRows,activity:activityRows,services:[{name:"HTTP API",status:"Operational"},{name:"WebSocket",status:"Operational"},{name:"SQLite",status:"Operational"},{name:"ESP-12E gateway",status:serverInfo.gatewayMonitor?.getSnapshot().status==="online"?"Online":serverInfo.gatewayMonitor?.getSnapshot().status==="checking"?"Checking":serverInfo.gatewayMonitor?.getSnapshot().status==="not-configured"?"Not configured":"Offline"}],gateway:serverInfo.gatewayMonitor?.getSnapshot()||{status:"not-configured",configured:false,telemetry:null,error:"Gateway monitor unavailable."}};
   });
   app.get("/admin/api/users",{preHandler:auth},async()=>({users:db.prepare("SELECT u.id,u.username,u.device_id AS deviceId,u.created_at AS createdAt,d.last_seen AS lastSeen FROM users u LEFT JOIN devices d ON d.id=u.device_id ORDER BY u.created_at DESC").all().map(u=>({...u,online:[...sockets.keys()].some(id=>id===u.id&&(sockets.get(id)?.size||0)>0)}))}));
-  app.get("/admin/api/devices",{preHandler:auth},async()=>({devices:db.prepare("SELECT d.id,d.created_at AS createdAt,d.last_seen AS lastSeen,u.username FROM devices d LEFT JOIN users u ON u.device_id=d.id ORDER BY d.last_seen DESC").all()}));
+  app.get("/admin/api/devices",{preHandler:auth},async()=>({devices:db.prepare("SELECT d.id,d.created_at AS createdAt,d.last_seen AS lastSeen,d.revoked_at AS revokedAt,u.username FROM devices d LEFT JOIN users u ON u.device_id=d.id ORDER BY d.last_seen DESC").all()}));
+  app.post("/admin/api/devices/:id/revoke",{preHandler:auth},async(req,reply)=>{
+    const device=db.prepare("SELECT id,revoked_at AS revokedAt FROM devices WHERE id=?").get(req.params.id);
+    if(!device)return reply.code(404).send({error:"device_not_found"});
+    if(device.revokedAt)return {ok:true,alreadyRevoked:true};
+    const revokedAt=new Date().toISOString();
+    const replacementHash=createHash("sha256").update(randomBytes(32)).digest("hex");
+    db.prepare("UPDATE devices SET revoked_at=?,token_hash=? WHERE id=?").run(revokedAt,replacementHash,device.id);
+    const user=db.prepare("SELECT id,username FROM users WHERE device_id=?").get(device.id);
+    if(user){
+      for(const socket of sockets.get(user.id)||[])if(socket.readyState===1)socket.close(1008,"Device access revoked by administrator");
+      sockets.delete(user.id);
+    }
+    activity(db,"device.revoked",device.id+(user?" · "+user.username:""));
+    return {ok:true,deviceId:device.id,revokedAt};
+  });
   app.get("/admin/api/nodes",{preHandler:auth},async()=>{
     const gateway=serverInfo.gatewayMonitor?.getSnapshot()||{status:"not-configured",configured:false,telemetry:null,error:"Gateway monitor unavailable."};
     const t=gateway.telemetry;
