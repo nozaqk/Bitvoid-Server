@@ -11,6 +11,7 @@ import { registerAdminRoutes, logAdminActivity } from "./admin-routes.js";
 import { createGatewayMonitor } from "./gateway-monitor.js";
 import { createCloudSync } from "./cloud-sync.js";
 import { registerClientRoutes } from "./client-routes.js";
+import { registerAccountAuthRoutes } from "./account-auth.js";
 
 const app = Fastify({ logger: false, bodyLimit: 1024 * 1024 });
 const db = getDatabase();
@@ -32,6 +33,7 @@ await app.register(websocket);
 
 registerAdminRoutes(app, db, sockets, { name: SERVER_NAME, gatewayMonitor });
 registerClientRoutes(app);
+registerAccountAuthRoutes(app);
 
 function advertiseLocalNames() {
   // These are separate mDNS host records: clients use bitvoid.local for the API,
