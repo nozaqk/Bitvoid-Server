@@ -9,7 +9,7 @@ export function createGatewayMonitor({
   username = process.env.BITVOID_GATEWAY_ADMIN_USERNAME || "",
   password = process.env.BITVOID_GATEWAY_ADMIN_PASSWORD || "",
   pcServerId = process.env.BITVOID_PC_SERVER_ID || "bv-pc-server-001",
-  pcServerSecret = process.env.BITVOID_PC_SERVER_SECRET || process.env.BITVOID_SYNC_SECRET || "",
+  pcServerSecret = process.env.BITVOID_ESP_TRUST_SECRET || "",
   expectedGatewayId = process.env.BITVOID_GATEWAY_ID || "bv-esp12e-gateway-001",
   intervalMs = 10000,
   timeoutMs = 3000
@@ -24,7 +24,7 @@ export function createGatewayMonitor({
     lastSeenAt: null,
     latencyMs: null,
     telemetry: null,
-    error: configured ? "Waiting for first gateway check." : "Set BITVOID_PC_SERVER_ID, BITVOID_PC_SERVER_SECRET (32+ characters), and BITVOID_GATEWAY_ID in the PC server environment."
+    error: configured ? "Waiting for first gateway check." : "Set BITVOID_PC_SERVER_ID, BITVOID_ESP_TRUST_SECRET (32+ characters), and BITVOID_GATEWAY_ID in the PC server environment."
   };
   let stopped = false;
   let timer = null;
