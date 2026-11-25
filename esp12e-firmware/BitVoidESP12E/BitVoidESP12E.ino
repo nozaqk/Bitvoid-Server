@@ -5,7 +5,7 @@
 #include <ArduinoJson.h>
 #include "config.h"
 
-#if !defined(BITVOID_AP_SSID) || !defined(BITVOID_AP_PASSWORD) || !defined(BITVOID_GATEWAY_ID) || !defined(BITVOID_ADMIN_USERNAME) || !defined(BITVOID_ADMIN_PASSWORD)
+#if !defined(BITVOID_AP_SSID) || !defined(BITVOID_AP_PASSWORD) || !defined(BITVOID_GATEWAY_ID) || !defined(BITVOID_PC_SERVER_ID) || !defined(BITVOID_PC_SERVER_SECRET) || !defined(BITVOID_ADMIN_USERNAME) || !defined(BITVOID_ADMIN_PASSWORD)
 #error "Create config.h from config.example.h and set Wi-Fi and dashboard credentials."
 #endif
 
@@ -36,6 +36,8 @@ void sendJson(int status, JsonDocument& doc) {
   String body;
   serializeJson(doc, body);
   server.sendHeader("Cache-Control", "no-store");
+  server.sendHeader("X-BitVoid-Server-Id", BITVOID_GATEWAY_ID);
+  server.sendHeader("X-BitVoid-Protocol", "BVT-1");
   server.sendHeader("Access-Control-Allow-Origin", "*");
   server.send(status, "application/json; charset=utf-8", body);
 }
@@ -48,6 +50,37 @@ bool requireAdmin() {
 
 void sendAdminStatus() {
   if (!requireAdmin()) return;
+  StaticJsonDocument<512> doc;
+  doc["status"] = "online";
+  doc["gatewayId"] = BITVOID_GATEWAY_ID;
+  doc["hostname"] = dashboardHostname;
+  doc["ssid"] = BITVOID_AP_SSID;
+  doc["ip"] = WiFi.softAPIP().toString();
+  doc["mac"] = WiFi.softAPmacAddress();
+  doc["clients"] = WiFi.softAPgetStationNum();
+  doc["maxClients"] = BITVOID_MAX_CLIENTS;
+  doc["uptimeSeconds"] = (millis() - bootMillis) / 1000;
+  doc["freeHeapBytes"] = ESP.getFreeHeap();
+  doc["chipId"] = String(ESP.getChipId(), HEX);
+  doc["flashBytes"] = ESP.getFlashChipRealSize();
+  doc["coreVersion"] = ESP.getCoreVersion();
+  sendJson(200, doc);
+}
+
+bool requireTrustedPcServer() {
+  String suppliedId = server.header("X-BitVoid-Server-Id");
+  String suppliedKey = server.header("X-BitVoid-Server-Key");
+  if (suppliedId == BITVOID_PC_SERVER_ID && suppliedKey.length() == String(BITVOID_PC_SERVER_SECRET).length() &&
+      suppliedKey == BITVOID_PC_SERVER_SECRET) return true;
+  StaticJsonDocument<160> error;
+  error["error"] = "server_identity_rejected";
+  error["message"] = "A registered PC server identity and valid server key are required.";
+  sendJson(401, error);
+  return false;
+}
+
+void sendInternalStatus() {
+  if (!requireTrustedPcServer()) return;
   StaticJsonDocument<512> doc;
   doc["status"] = "online";
   doc["gatewayId"] = BITVOID_GATEWAY_ID;
@@ -143,6 +176,7 @@ void setupRoutes() {
   server.on("/",HTTP_GET,[](){ server.send(200,"text/plain; charset=utf-8","BitVoid ESP-12E Wi-Fi gateway is online. Admin dashboard: http://esp-server.local/admin"); });
   server.on("/admin",HTTP_GET,[](){ if(!requireAdmin())return; server.send_P(200,"text/html; charset=utf-8",ADMIN_PAGE); });
   server.on("/admin/api/status",HTTP_GET,sendAdminStatus);
+  server.on("/api/v1/internal/status",HTTP_GET,sendInternalStatus);
   server.on("/api/node",HTTP_GET,sendNodeIdentity);
   server.on("/api/v1/gateway/info",HTTP_GET,sendGatewayInfo);
   server.on("/api/v1/health",HTTP_GET,sendHealth);
@@ -166,6 +200,12 @@ void setup() {
     Serial.println("FATAL: Set a unique WPA2 password in config.h (8-63 characters).");
     while(true) delay(1000);
   }
+  String pcServerSecret = BITVOID_PC_SERVER_SECRET;
+  if (pcServerSecret.length() < 32 || pcServerSecret.startsWith("REPLACE_") ||
+      String(BITVOID_PC_SERVER_ID).length() < 3 || String(BITVOID_GATEWAY_ID).length() < 3) {
+    Serial.println("FATAL: Configure a valid PC server ID and a unique secret of at least 32 characters in config.h.");
+    while(true) delay(1000);
+  }
   if(adminPassword.length()<12 || adminPassword=="CHANGE_THIS_ADMIN_PASSWORD") {
     Serial.println("FATAL: Set a unique dashboard password in config.h (at least 12 characters).");
     while(true) delay(1000);
@@ -182,6 +222,8 @@ void setup() {
   } else {
     MDNS.addService("http","tcp",80);
   }
+  const char* trustedHeaders[] = {"X-BitVoid-Server-Id", "X-BitVoid-Server-Key"};
+  server.collectHeaders(trustedHeaders, 2);
   setupRoutes();
   server.begin();
   Serial.println();
