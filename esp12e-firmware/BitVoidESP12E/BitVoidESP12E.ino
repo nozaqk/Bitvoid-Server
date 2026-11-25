@@ -70,8 +70,8 @@ void sendAdminStatus() {
 bool requireTrustedPcServer() {
   String suppliedId = server.header("X-BitVoid-Server-Id");
   String suppliedKey = server.header("X-BitVoid-Server-Key");
-  if (suppliedId == BITVOID_PC_SERVER_ID && suppliedKey.length() == String(BITVOID_PC_SERVER_SECRET).length() &&
-      suppliedKey == BITVOID_PC_SERVER_SECRET) return true;
+  if (suppliedId == BITVOID_PC_SERVER_ID && suppliedKey.length() == String(BITVOID_ESP_TRUST_SECRET).length() &&
+      suppliedKey == BITVOID_ESP_TRUST_SECRET) return true;
   StaticJsonDocument<160> error;
   error["error"] = "server_identity_rejected";
   error["message"] = "A registered PC server identity and valid server key are required.";
@@ -200,7 +200,7 @@ void setup() {
     Serial.println("FATAL: Set a unique WPA2 password in config.h (8-63 characters).");
     while(true) delay(1000);
   }
-  String pcServerSecret = BITVOID_PC_SERVER_SECRET;
+  String pcServerSecret = BITVOID_ESP_TRUST_SECRET;
   if (pcServerSecret.length() < 32 || pcServerSecret.startsWith("REPLACE_") ||
       String(BITVOID_PC_SERVER_ID).length() < 3 || String(BITVOID_GATEWAY_ID).length() < 3) {
     Serial.println("FATAL: Configure a valid PC server ID and a unique secret of at least 32 characters in config.h.");
