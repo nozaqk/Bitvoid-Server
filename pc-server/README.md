@@ -42,7 +42,7 @@ Open `http://bitvoid.local:8787/app` on a phone or computer connected to the cam
 - 24-hour message traffic chart.
 - Service health and server uptime/runtime information.
 - User table with online/offline status, IDs and registration time.
-- Paired device table with assigned username and last-seen information.
+- Paired device table with assigned username, last-seen information and administrator device revocation. Revoking invalidates the bearer token and closes active WebSocket sessions; the device must be paired again with the PC pairing code.
 - Network node view for the PC coordinator and ESP-12E gateway.
 - Recent activity feed and activity log.
 - Search for users and paired devices.
