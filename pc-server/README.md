@@ -48,7 +48,7 @@ Open `http://bitvoid.local:8787/app` on a phone or computer connected to the cam
 - Search for users and paired devices.
 - Conversation and group oversight, including member lists and inspection of the latest 100 messages per conversation.
 - Group administration: rename groups and remove members from the protected dashboard. Direct conversations remain read-only, and groups cannot be reduced below one member.
-- Conversation attachments: upload and download supported images, PDF, text, ZIP, audio and video files up to 8 MB per file. Attachments are stored locally under `.state/uploads/` with random storage names and private file permissions; conversation membership is required to list or download them. The browser client also displays authenticated inline previews for JPEG, PNG, WebP and GIF images up to 3 MB each (up to 12 previews per conversation view).
+- Conversation attachments: upload and download supported images, PDF, text, ZIP, audio and video files up to 8 MB per file. Default quotas are 2 GB total server storage, 250 MB per conversation and 50 MB uploaded per user per UTC day; these can be overridden with environment variables. Quota checks are performed atomically before the file is written. Attachments are stored locally under `.state/uploads/` with random storage names and private file permissions; conversation membership is required to list or download them. The browser client also displays authenticated inline previews for JPEG, PNG, WebP and GIF images up to 3 MB each (up to 12 previews per conversation view).
 - Media administration: inspect recent attachment metadata and storage usage, search files, and permanently delete an attachment from the protected dashboard.
 - Server settings overview showing runtime, cloud-sync and ESP gateway configuration without revealing secret values.
 - On-demand ESP-12E gateway health check from the protected admin dashboard.
@@ -92,7 +92,7 @@ The response contains a device-scoped bearer token. Store it securely on the cli
 | GET | `/admin/api/conversations/:id/messages` | Inspect members and latest 100 messages (admin session required) |
 | PATCH | `/admin/api/conversations/:id` | Rename a group (admin session required) |
 | DELETE | `/admin/api/conversations/:id/members/:userId` | Remove a group member (admin session required) |
-| GET | `/admin/api/media` | List recent attachment metadata and storage totals (admin session required) |
+| GET | `/admin/api/media` | List recent attachment metadata, storage totals and quota limits (admin session required) |
 | DELETE | `/admin/api/media/:id` | Permanently delete an attachment (admin session required) |
 | POST | `/api/v1/conversations/:id/attachments` | Upload a file as `application/octet-stream` with `X-BitVoid-File-Name` and `X-BitVoid-File-Type` headers (conversation member required) |
 | GET | `/api/v1/conversations/:id/attachments` | List conversation attachments (conversation member required) |
@@ -153,3 +153,13 @@ No GitHub Actions workflows are used.
 ### Account authentication and recovery
 
 The PC server supports the same account endpoints as BitVoid Cloud. Registration accepts a username and password (minimum 10 characters) and returns a 44-character hexadecimal master passphrase exactly once. The server stores a scrypt password verifier and a SHA-256 lookup digest of the high-entropy recovery secret; it never stores the master passphrase itself. Recovery accepts the master passphrase and a new password and does not require the username. Keep an offline copy of the master passphrase. These local accounts are stored on this PC server; they are not automatically synchronized with cloud account credentials.
+
+
+### Attachment quota configuration
+
+Optional environment variables in `.env` (values are bytes):
+- `BITVOID_MAX_STORAGE_BYTES`: server-wide attachment storage cap (default 2 GiB).
+- `BITVOID_MAX_CONVERSATION_STORAGE_BYTES`: per-conversation attachment cap (default 250 MiB).
+- `BITVOID_MAX_USER_DAILY_UPLOAD_BYTES`: per-user upload allowance per UTC day (default 50 MiB).
+
+The 8 MiB per-file limit remains fixed. When a quota is reached, the API returns a structured `storage_quota_exceeded` or `upload_quota_exceeded` response. Deleting attachments frees the corresponding quota immediately. Quota checks use a SQLite write transaction so concurrent uploads cannot both pass against the same remaining capacity.
