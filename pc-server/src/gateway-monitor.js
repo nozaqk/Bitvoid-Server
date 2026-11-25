@@ -1,13 +1,7 @@
 const DEFAULT_GATEWAY_URL = "http://192.168.4.1";
 
-function basicAuth(username, password) {
-  return "Basic " + Buffer.from(username + ":" + password, "utf8").toString("base64");
-}
-
 export function createGatewayMonitor({
   url = process.env.BITVOID_GATEWAY_URL || DEFAULT_GATEWAY_URL,
-  username = process.env.BITVOID_GATEWAY_ADMIN_USERNAME || "",
-  password = process.env.BITVOID_GATEWAY_ADMIN_PASSWORD || "",
   pcServerId = process.env.BITVOID_PC_SERVER_ID || "bv-pc-server-001",
   pcServerSecret = process.env.BITVOID_ESP_TRUST_SECRET || "",
   expectedGatewayId = process.env.BITVOID_GATEWAY_ID || "bv-esp12e-gateway-001",
