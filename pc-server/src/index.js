@@ -11,6 +11,7 @@ import { registerAdminRoutes, logAdminActivity } from "./admin-routes.js";
 import { createGatewayMonitor } from "./gateway-monitor.js";
 import { createCloudSync } from "./cloud-sync.js";
 import { registerClientRoutes } from "./client-routes.js";
+import { registerMediaRoutes } from "./media-routes.js";
 import { registerAccountAuthRoutes } from "./account-auth.js";
 
 const app = Fastify({ logger: false, bodyLimit: 1024 * 1024 });
@@ -30,9 +31,11 @@ cloudSync.start();
 
 await app.register(cors, { origin: true });
 await app.register(websocket);
+app.addContentTypeParser("application/octet-stream",{parseAs:"buffer",bodyLimit:8*1024*1024},(_req,body,done)=>done(null,body));
 
 registerAdminRoutes(app, db, sockets, { name: SERVER_NAME, gatewayMonitor });
 registerClientRoutes(app);
+registerMediaRoutes(app,db,requireUser);
 registerAccountAuthRoutes(app);
 
 function advertiseLocalNames() {
@@ -78,13 +81,13 @@ app.get("/api/v1/gateway/info", async () => ({
   hardware: { family: "computer", model: process.platform },
   protocol: { name: "bitvoid-gateway", major: 1, minor: 0 },
   identity: { mode: "local-server-v1", verified: false },
-  capabilities: ["discovery","health","pairing","users","direct-messaging","groups","websocket-events"],
+  capabilities: ["discovery","health","pairing","users","direct-messaging","groups","websocket-events","attachments"],
   limits: { maxClients: 100 },
   links: { health: "/api/v1/health", services: "/api/v1/services", events: "/api/v1/events" }
 }));
 app.get("/api/v1/services", async () => ({ services: [
   ...["discovery","health","pairing","users","direct-messaging","groups","websocket-events"].map(id => ({ id, available: true })),
-  { id: "media", available: false }, { id: "webrtc", available: false }
+  { id: "media", available: true }, { id: "webrtc", available: false }
 ]}));
 app.get("/api/v1/devices", { preHandler: requireDevice }, async () => ({ devices: db.prepare("SELECT id,created_at AS createdAt,last_seen AS lastSeen FROM devices ORDER BY created_at").all() }));
 app.get("/api/node", async (_req, reply) => {
