@@ -1,5 +1,5 @@
 const $=id=>document.getElementById(id);
-let overview=null,activePage="overview",refreshTimer=null,mediaRows=[];
+let overview=null,activePage="overview",refreshTimer=null,mediaRows=[],mediaLimits=null;
 const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const date=value=>value?new Date(value).toLocaleString():"—";
 const ago=value=>{if(!value)return"—";const ms=Date.now()-new Date(value).getTime();if(ms<60000)return"just now";if(ms<3600000)return Math.floor(ms/60000)+"m ago";if(ms<86400000)return Math.floor(ms/3600000)+"h ago";return Math.floor(ms/86400000)+"d ago";};
@@ -79,9 +79,17 @@ function formatBytes(bytes){
 }
 async function loadMedia(){
  try{
-  const data=await api("media");mediaRows=data.files||[];
+  const data=await api("media");mediaRows=data.files||[];mediaLimits=data.limits||{};
+  const used=data.totals?.bytes||0,totalLimit=mediaLimits.maxTotalStorageBytes||0;
   $("mediaCount").textContent=data.totals?.count??mediaRows.length;
-  $("mediaStorage").textContent=formatBytes(data.totals?.bytes||0);
+  $("mediaStorage").textContent=formatBytes(used);
+  $("mediaQuotaUsed").textContent=formatBytes(used)+" / "+formatBytes(totalLimit);
+  $("mediaQuotaPercent").textContent=(totalLimit?Math.min(100,used/totalLimit*100):0).toFixed(1)+"% used";
+  $("mediaQuotaBar").style.width=(totalLimit?Math.min(100,used/totalLimit*100):0)+"%";
+  $("mediaQuotaBar").setAttribute("aria-valuenow",String(totalLimit?Math.min(100,used/totalLimit*100):0));
+  $("mediaConversationLimit").textContent=formatBytes(mediaLimits.maxConversationStorageBytes||0);
+  $("mediaDailyLimit").textContent=formatBytes(mediaLimits.maxUserDailyUploadBytes||0);
+  $("mediaFileLimit").textContent=formatBytes(mediaLimits.maxFileBytes||0);
   renderMedia();
  }catch(error){$("mediaTable").innerHTML=emptyRow(7,esc(error.message));}
 }
