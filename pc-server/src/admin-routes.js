@@ -57,6 +57,33 @@ export function registerAdminRoutes(app,db,sockets,serverInfo) {
        telemetry:t?{gatewayId:t.gatewayId,hostname:t.hostname,ssid:t.ssid,ip:t.ip,mac:t.mac,clients:t.clients,maxClients:t.maxClients,uptimeSeconds:t.uptimeSeconds,freeHeapBytes:t.freeHeapBytes,chipId:t.chipId,flashBytes:t.flashBytes,coreVersion:t.coreVersion}:null}
     ]};
   });
+  app.get("/admin/api/conversations",{preHandler:auth},async()=>{
+    const rows=db.prepare(`SELECT c.id,c.type,c.title,c.created_at AS createdAt,c.created_by AS createdBy,u.username AS creator,
+      (SELECT COUNT(*) FROM conversation_members m WHERE m.conversation_id=c.id) AS memberCount,
+      (SELECT COUNT(*) FROM messages x WHERE x.conversation_id=c.id) AS messageCount,
+      (SELECT MAX(created_at) FROM messages x WHERE x.conversation_id=c.id) AS lastMessageAt
+      FROM conversations c LEFT JOIN users u ON u.id=c.created_by ORDER BY COALESCE(lastMessageAt,c.created_at) DESC`).all();
+    return {conversations:rows};
+  });
+  app.get("/admin/api/conversations/:id/messages",{preHandler:auth},async(req,reply)=>{
+    const exists=db.prepare("SELECT id FROM conversations WHERE id=?").get(req.params.id);
+    if(!exists)return reply.code(404).send({error:"conversation_not_found"});
+    const messages=db.prepare(`SELECT m.id,m.sender_id AS senderId,u.username AS sender,m.body,m.created_at AS createdAt
+      FROM messages m LEFT JOIN users u ON u.id=m.sender_id WHERE m.conversation_id=? ORDER BY m.created_at DESC LIMIT 100`).all(req.params.id).reverse();
+    const members=db.prepare(`SELECT u.id,u.username,m.joined_at AS joinedAt FROM conversation_members m JOIN users u ON u.id=m.user_id WHERE m.conversation_id=? ORDER BY m.joined_at`).all(req.params.id);
+    return {messages,members};
+  });
+  app.get("/admin/api/settings",{preHandler:auth},async()=>{
+    const gateway=serverInfo.gatewayMonitor?.getSnapshot()||{status:"not-configured",configured:false,error:"Gateway monitor unavailable."};
+    return {server:{name:serverInfo.name,host:process.env.HOST||"0.0.0.0",port:Number(process.env.PORT||8787),platform:process.platform,nodeVersion:process.version,stateDirectory:process.env.BITVOID_STATE_DIR||".state",uptimeSeconds:Math.floor(process.uptime())},
+      integrations:{gateway:{configured:gateway.configured,status:gateway.status,endpoint:gateway.endpoint,error:gateway.error},cloud:{configured:Boolean(process.env.BITVOID_CLOUD_SYNC_URL&&String(process.env.BITVOID_SYNC_SECRET||"").length>=32),url:process.env.BITVOID_CLOUD_SYNC_URL||null,nodeId:process.env.BITVOID_CLOUD_NODE_ID||"bitvoid-campus-node"}},
+      security:{adminSessionHours:12,sessionCookie:"HttpOnly · SameSite=Strict",localNetworkOnly:true,httpsConfigured:false}};
+  });
+  app.post("/admin/api/nodes/gateway/check",{preHandler:auth},async()=>{
+    if(!serverInfo.gatewayMonitor)return {ok:false,status:"not-configured",error:"Gateway monitor unavailable."};
+    await serverInfo.gatewayMonitor.check();
+    return {ok:true,gateway:serverInfo.gatewayMonitor.getSnapshot()};
+  });
   app.get("/admin/api/activity",{preHandler:auth},async()=>({activity:db.prepare("SELECT id,event,detail,created_at AS createdAt FROM admin_activity ORDER BY id DESC LIMIT 100").all()}));
   app.log.info("BitVoid admin dashboard routes registered");
 }
