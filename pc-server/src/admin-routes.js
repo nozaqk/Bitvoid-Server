@@ -19,6 +19,7 @@ export function registerAdminRoutes(app,db,sockets,serverInfo) {
   app.get("/admin",async(_req,reply)=>reply.type("text/html; charset=utf-8").send(readAsset("index.html")));
   app.get("/admin/assets/dashboard.css",async(_req,reply)=>reply.type("text/css; charset=utf-8").send(readAsset("dashboard.css")));
   app.get("/admin/assets/dashboard.js",async(_req,reply)=>reply.type("text/javascript; charset=utf-8").send(readAsset("dashboard.js")));
+  app.get("/admin/assets/bitvoid-logo.jpg",async(_req,reply)=>reply.type("image/jpeg").send(readAsset("assets/bitvoid-logo.jpg")));
   app.get("/admin/api/session",async(req,reply)=>{const session=getAdminSession(cookieValue(req));return {authenticated:!!session,username:session?.username||null,setupRequired:adminSetupRequired()};});
   app.post("/admin/api/setup",async(req,reply)=>{
     try { if(!adminSetupRequired())return reply.code(409).send({error:"setup_complete"}); const account=adminSetup(req.body?.setupCode,req.body?.username,req.body?.password); activity(db,"admin.created",account.username); const login=adminLogin(account.username,req.body.password); setCookie(reply,login.token); return {ok:true,username:login.username}; }
