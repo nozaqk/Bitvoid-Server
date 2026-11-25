@@ -86,10 +86,10 @@ The response contains a device-scoped bearer token. Store it securely on the cli
 | GET | `/api/v1/health` | Health and uptime |
 | GET | `/api/v1/services` | Capability list |
 | GET | `/api/v1/devices` | Paired device list |
-| POST | `/api/v1/auth/register` | Create username/password account and issue one-time master recovery passphrase |
-| POST | `/api/v1/auth/login` | Username/password account login |
-| POST | `/api/v1/auth/recover` | Reset password using the 44-character hexadecimal master passphrase |
-| POST | `/api/v1/auth/password/change` | Change password for an authenticated account |
+| POST | `/api/v1/account/register` | Create username/password account and issue one-time master recovery passphrase |
+| POST | `/api/v1/account/login` | Username/password account login |
+| POST | `/api/v1/account/recover` | Reset password using the 44-character hexadecimal master passphrase |
+| POST | `/api/v1/account/password/change` | Change password for an authenticated account |
 | POST | `/api/v1/pairing/request` | Create 120-second challenge |
 | POST | `/api/v1/pairing/approve` | Approve and issue device token |
 | POST | `/api/v1/users/register` | Register paired device username |
