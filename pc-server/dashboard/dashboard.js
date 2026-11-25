@@ -36,7 +36,7 @@ async function revokeDevice(id){
 }
 async function loadNodes(){try{const data=await api("nodes");$("nodesGrid").innerHTML=data.nodes.map(n=>{const t=n.telemetry||{};const details=[["Node ID",n.id],["Role",n.role],["Address / endpoint",n.address],["Reporting",n.status==="online"?"Live":n.status==="not-configured"?"Not configured":n.status==="checking"?"Checking":"Offline"]];if(t.gatewayId)details.push(["Gateway ID",t.gatewayId],["Wi-Fi SSID",t.ssid],["Connected clients",t.clients+" / "+t.maxClients],["Uptime",duration(t.uptimeSeconds)],["Free heap",Math.round(t.freeHeapBytes/1024)+" KB"],["MAC address",t.mac],["ESP8266 core",t.coreVersion],["Last seen",n.lastSeenAt?date(n.lastSeenAt):"—"],["Last checked",n.checkedAt?date(n.checkedAt):"—"],["Response time",n.latencyMs+" ms"]);else details.push(["Last seen",n.lastSeenAt?date(n.lastSeenAt):"Never"],["Last check",n.checkedAt?date(n.checkedAt):"—"],["Diagnostic",n.error||"Waiting for gateway response."]);return `<article class="node-card"><div class="node-head"><div><h3>${esc(n.name)}</h3><p>${esc(n.type)}</p></div><span class="node-type">${esc(n.status)}</span></div><div class="node-details">${details.map(([k,v])=>`<div><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join("")}</div></article>`}).join("");}catch(e){$("nodesGrid").textContent=e.message;}}
 async function loadActivity(){try{const data=await api("activity");$("activityTable").innerHTML=data.activity.map(a=>activityItem(a)).join("")||'<p class="muted">No activity yet.</p>';}catch(e){$("activityTable").textContent=e.message;}}
-let conversationRows=[];
+let conversationRows=[],selectedConversationId=null;
 async function loadConversations(){try{const data=await api("conversations");conversationRows=data.conversations||[];renderConversations();}catch(e){$("conversationsTable").innerHTML=emptyRow(7,esc(e.message));}}
 function renderConversations(){
  const q=($("conversationSearch").value||"").toLowerCase();
@@ -47,11 +47,31 @@ function renderConversations(){
 async function inspectConversation(id){
  $("conversationTitle").textContent="Loading conversation…";$("conversationMeta").textContent=id;
  try{const data=await api("conversations/"+encodeURIComponent(id)+"/messages");const row=conversationRows.find(c=>c.id===id);
- $("conversationTitle").textContent=row?.title||"Direct conversation";$("conversationMeta").textContent=(row?.type||"conversation")+" · "+(data.members?.length||0)+" members · "+(data.messages?.length||0)+" recent messages · Read only";
- $("conversationMembers").innerHTML=(data.members||[]).map(m=>'<span class="member-chip">'+esc(m.username)+'</span>').join("")||'<span class="muted tiny">No members</span>';
+ selectedConversationId=id;
+ $("conversationTitle").textContent=row?.title||"Direct conversation";$("conversationMeta").textContent=(row?.type||"conversation")+" · "+(data.members?.length||0)+" members · "+(data.messages?.length||0)+" recent messages";
+ const isGroup=row?.type==="group";$("conversationAdminControls").classList.toggle("hidden",!isGroup);
+ if(isGroup){
+  $("groupTitleInput").value=row?.title||"";$("groupAdminMessage").textContent="You can rename this group and remove members. A group must retain at least one member."; 
+  $("conversationMembers").innerHTML=(data.members||[]).map(m=>'<span class="member-chip">'+esc(m.username)+' <button class="member-remove" data-user-id="'+esc(m.id)+'" data-username="'+esc(m.username)+'" aria-label="Remove '+esc(m.username)+'">×</button></span>').join("")||'<span class="muted tiny">No members</span>';
+  document.querySelectorAll(".member-remove").forEach(button=>button.addEventListener("click",()=>removeGroupMember(id,button.dataset.userId,button.dataset.username)));
+ }else{$("conversationMembers").innerHTML=(data.members||[]).map(m=>'<span class="member-chip">'+esc(m.username)+'</span>').join("")||'<span class="muted tiny">No members</span>';}
  $("conversationMessages").innerHTML=(data.messages||[]).map(m=>'<div class="activity-item"><div class="activity-symbol">✉</div><div><b>'+esc(m.sender||"Unknown member")+'</b><small>'+esc(date(m.createdAt))+'</small><p class="message-preview">'+esc(m.body)+'</p></div></div>').join("")||'<p class="muted tiny">No messages in this conversation.</p>';
  }catch(e){$("conversationTitle").textContent="Unable to load conversation";$("conversationMeta").textContent=e.message;}
 }
+async function saveGroupTitle(){
+ const id=selectedConversationId;if(!id)return;
+ const title=$("groupTitleInput").value.trim();$("groupAdminMessage").textContent="";
+ try{const result=await api("conversations/"+encodeURIComponent(id),{method:"PATCH",body:JSON.stringify({title})});const row=conversationRows.find(c=>c.id===id);if(row)row.title=result.title;renderConversations();$("conversationTitle").textContent=result.title;$("groupAdminMessage").textContent="Group name updated.";}
+ catch(e){$("groupAdminMessage").textContent="Could not update group: "+e.message;}
+}
+async function removeGroupMember(conversationId,userId,username){
+ if(!window.confirm("Remove "+username+" from this group? They will no longer be a member of this conversation."))return;
+ $("groupAdminMessage").textContent="";
+ try{await api("conversations/"+encodeURIComponent(conversationId)+"/members/"+encodeURIComponent(userId),{method:"DELETE"});await inspectConversation(conversationId);$("groupAdminMessage").textContent=username+" was removed from the group.";}
+ catch(e){$("groupAdminMessage").textContent="Could not remove member: "+e.message;}
+}
+$("saveGroupTitleButton").addEventListener("click",saveGroupTitle);
+$("groupTitleInput").addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();saveGroupTitle();}});
 async function loadSettings(){
  try{const data=await api("settings"),s=data.server,g=data.integrations.gateway,c=data.integrations.cloud,sec=data.security;
  const rows=pairs=>pairs.map(([k,v])=>'<div><span>'+esc(k)+'</span><b>'+esc(v??"—")+'</b></div>').join("");
