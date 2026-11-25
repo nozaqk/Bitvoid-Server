@@ -21,6 +21,7 @@ if(mediaRecovery.missingMetadata||mediaRecovery.orphanFiles) console.warn("[BitV
 const PORT = Number(process.env.PORT || 8787);
 const HOST = process.env.HOST || "0.0.0.0";
 const SERVER_NAME = process.env.BITVOID_SERVER_NAME || "BitVoid PC Server";
+const PC_SERVER_ID = process.env.BITVOID_PC_SERVER_ID || "bv-pc-server-001";
 const adminCode = getOrCreateAdminCode();
 const adminSetupCode = ensureAdminSetupCode();
 const sockets = new Map();
@@ -28,9 +29,19 @@ const bonjour = new Bonjour({}, error => console.warn("[BitVoid] mDNS responder 
 const mdnsServices = [];
 const gatewayMonitor = createGatewayMonitor();
 gatewayMonitor.start();
-const cloudSync = createCloudSync(db, { url:process.env.BITVOID_CLOUD_SYNC_URL, nodeId:process.env.BITVOID_CLOUD_NODE_ID, secret:process.env.BITVOID_SYNC_SECRET });
+const cloudSync = createCloudSync(db, {
+  url:process.env.BITVOID_CLOUD_SYNC_URL,
+  nodeId:PC_SERVER_ID,
+  secret:process.env.BITVOID_PC_SERVER_SECRET || process.env.BITVOID_SYNC_SECRET,
+  cloudServerId:process.env.BITVOID_CLOUD_SERVER_ID || "bv-cloud-server-001"
+});
 cloudSync.start();
 
+app.addHook("onSend", async (_request, reply, payload) => {
+  reply.header("X-BitVoid-Server-Id", PC_SERVER_ID);
+  reply.header("X-BitVoid-Protocol", "BVT-1");
+  return payload;
+});
 await app.register(cors, { origin: true });
 await app.register(websocket);
 app.addContentTypeParser("application/octet-stream",{parseAs:"buffer",bodyLimit:8*1024*1024},(_req,body,done)=>done(null,body));
@@ -79,10 +90,10 @@ app.get("/", async () => ({ service: "bitvoid", name: SERVER_NAME, status: "read
 app.get("/health", async () => ({ ok: true, status: "ready", uptimeSeconds: Math.floor(process.uptime()) }));
 app.get("/api/v1/health", async () => ({ ok: true, status: "ready", uptimeSeconds: Math.floor(process.uptime()), cloudSync:cloudSync.getSnapshot() }));
 app.get("/api/v1/gateway/info", async () => ({
-  service: "bitvoid", gatewayId: "bv-pc-server", displayName: SERVER_NAME,
+  service: "bitvoid", gatewayId: PC_SERVER_ID, displayName: SERVER_NAME,
   hardware: { family: "computer", model: process.platform },
   protocol: { name: "bitvoid-gateway", major: 1, minor: 0 },
-  identity: { mode: "local-server-v1", verified: false },
+  identity: { mode: "BVT-1", verified: true, serverId: PC_SERVER_ID },
   capabilities: ["discovery","health","pairing","users","direct-messaging","groups","websocket-events","attachments"],
   limits: { maxClients: 100 },
   links: { health: "/api/v1/health", services: "/api/v1/services", events: "/api/v1/events" }
@@ -94,9 +105,9 @@ app.get("/api/v1/services", async () => ({ services: [
 app.get("/api/v1/devices", { preHandler: requireDevice }, async () => ({ devices: db.prepare("SELECT id,created_at AS createdAt,last_seen AS lastSeen FROM devices ORDER BY created_at").all() }));
 app.get("/api/node", async (_req, reply) => {
   reply.header("X-BitVoid-Node","1").header("X-BitVoid-Protocol","2").header("X-BitVoid-Identity","local-identity-v1");
-  return { service: "bitvoid", protocolVersion: 2, nodeId: "bv-pc-server", nodeType: "pc-coordinator", coordinator: true, portalAvailable: false };
+  return { service: "bitvoid", protocolVersion: 2, nodeId: PC_SERVER_ID, nodeType: "pc-coordinator", coordinator: true, portalAvailable: false };
 });
-app.get("/api/mesh/nodes", async () => ({ service: "bitvoid", protocolVersion: 2, nodes: [{ nodeId: "bv-pc-server", nodeType: "pc-coordinator", coordinator: true }] }));
+app.get("/api/mesh/nodes", async () => ({ service: "bitvoid", protocolVersion: 2, nodes: [{ nodeId: PC_SERVER_ID, nodeType: "pc-coordinator", coordinator: true }] }));
 
 app.post("/api/v1/pairing/request", async (req, reply) => {
   const deviceId = String(req.body?.deviceId || "").trim();
@@ -133,8 +144,8 @@ app.post("/api/v1/cloud/link", { preHandler: requireUser }, async (req,reply) =>
     const login=await fetch(cloudUrl+"/api/v1/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password}),signal:AbortSignal.timeout(12000)});
     const auth=await login.json().catch(()=>({}));
     if(!login.ok) return reply.code(401).send({error:"cloud_login_failed",message:auth.message||"Cloud sign-in failed."});
-    const nodeId=process.env.BITVOID_CLOUD_NODE_ID||"bitvoid-campus-node";
-    const linked=await fetch(cloudUrl+"/api/v1/sync/link-profile",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+auth.token,"X-BitVoid-Sync-Secret":process.env.BITVOID_SYNC_SECRET},body:JSON.stringify({nodeId,localUserId:req.user.id}),signal:AbortSignal.timeout(12000)});
+    const nodeId=PC_SERVER_ID;
+    const linked=await fetch(cloudUrl+"/api/v1/sync/link-profile",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+auth.token,"X-BitVoid-Server-Id":PC_SERVER_ID,"X-BitVoid-Server-Key":process.env.BITVOID_PC_SERVER_SECRET || process.env.BITVOID_SYNC_SECRET},body:JSON.stringify({nodeId,localUserId:req.user.id}),signal:AbortSignal.timeout(12000)});
     const result=await linked.json().catch(()=>({}));
     if(!linked.ok) return reply.code(linked.status).send(result);
     db.prepare("INSERT INTO cloud_identity_links(local_user_id,cloud_account_id,linked_at) VALUES(?,?,?) ON CONFLICT(local_user_id) DO UPDATE SET cloud_account_id=excluded.cloud_account_id,linked_at=excluded.linked_at").run(req.user.id,result.account.id,new Date().toISOString());
