@@ -37,7 +37,7 @@ export function createGatewayMonitor({
       });
       if (!response.ok) {
         const message = response.status === 401
-          ? "Gateway rejected the configured dashboard credentials (HTTP 401)."
+          ? "Gateway rejected the PC server identity or ESP trust key (HTTP 401)."
           : "Gateway returned HTTP " + response.status + ".";
         snapshot = { ...snapshot, status: "offline", checkedAt: new Date().toISOString(), latencyMs: Date.now() - started, error: message };
         return;
