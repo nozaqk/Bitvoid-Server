@@ -124,7 +124,7 @@ Server-to-server operations require both a registered server ID and its matching
 
 1. In pc-server/, copy .env.example to .env.
 2. Generate two independent random secrets of at least 32 characters. In Windows PowerShell, run:
-   `[Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))`
+   `$rng = [Security.Cryptography.RandomNumberGenerator]::Create(); $bytes = New-Object byte[] 32; $rng.GetBytes($bytes); ($bytes | ForEach-Object { $_.ToString("x2") }) -join ""`
    Run it twice; use one value for `BITVOID_PC_SERVER_SECRET` and a different value for `BITVOID_ESP_TRUST_SECRET`.
 3. In the cloud service environment, set `BITVOID_SERVER_ID=bv-cloud-server-001` and `BITVOID_TRUSTED_SERVER_KEYS` to a JSON object mapping `bv-pc-server-001` to the exact `BITVOID_PC_SERVER_SECRET` value.
 4. In pc-server/.env, set `BITVOID_PC_SERVER_ID=bv-pc-server-001`, `BITVOID_PC_SERVER_SECRET` to the cloud trust key, and `BITVOID_ESP_TRUST_SECRET` to the separate ESP trust key. Set `BITVOID_CLOUD_SERVER_ID=bv-cloud-server-001`.
