@@ -7,9 +7,9 @@
 #define BITVOID_MAX_CLIENTS 4
 
 // Authorized PC server identity and private key (must match the PC server .env).
-// Keep the secret private. Use the same 32+ character random value on the PC and cloud.
+// Keep the secret private. Use the same 32+ character random value in the PC server .env and this ESP config.
 #define BITVOID_PC_SERVER_ID "bv-pc-server-001"
-#define BITVOID_PC_SERVER_SECRET "REPLACE_WITH_THE_SAME_UNIQUE_PC_SERVER_SECRET"
+#define BITVOID_ESP_TRUST_SECRET "REPLACE_WITH_A_UNIQUE_ESP_TRUST_SECRET"
 
 // Independent ESP gateway dashboard credentials (HTTP Basic Authentication).
 // Use a unique username and a password of at least 12 characters.
