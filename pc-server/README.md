@@ -48,7 +48,7 @@ Open `http://bitvoid.local:8787/app` on a phone or computer connected to the cam
 - Search for users and paired devices.
 - Conversation and group oversight, including member lists and inspection of the latest 100 messages per conversation.
 - Group administration: rename groups and remove members from the protected dashboard. Direct conversations remain read-only, and groups cannot be reduced below one member.
-- Conversation attachments: upload and download supported images, PDF, text, ZIP, audio and video files up to 8 MB per file. Default quotas are 2 GB total server storage, 250 MB per conversation and 50 MB uploaded per user per UTC day; these can be overridden with environment variables. Quota checks are performed atomically before the file is written. Attachments are stored locally under `.state/uploads/` with random storage names and private file permissions; conversation membership is required to list or download them. The browser client also displays authenticated inline previews for JPEG, PNG, WebP and GIF images up to 3 MB each (up to 12 previews per conversation view).
+- Conversation attachments: upload and download supported images, PDF, text, ZIP, audio and video files up to 8 MB per file. Default quotas are 2 GB total server storage, 250 MB per conversation and 50 MB uploaded per user per UTC day; these can be overridden with environment variables. Quota checks are performed atomically before the file is written. At startup, storage reconciliation removes unreferenced upload files and clears database records whose files are missing. The dashboard displays server-wide quota usage and all configured limits. Attachments are stored locally under `.state/uploads/` with random storage names and private file permissions; conversation membership is required to list or download them. The browser client also displays authenticated inline previews for JPEG, PNG, WebP and GIF images up to 3 MB each (up to 12 previews per conversation view).
 - Media administration: inspect recent attachment metadata and storage usage, search files, and permanently delete an attachment from the protected dashboard.
 - Server settings overview showing runtime, cloud-sync and ESP gateway configuration without revealing secret values.
 - On-demand ESP-12E gateway health check from the protected admin dashboard.
@@ -141,7 +141,7 @@ If Windows Firewall prompts for Node.js, allow it on Private networks only. mDNS
 
 ## Limitations and security notes
 
-This remains the first standalone server milestone. It does not yet implement all legacy Android-hosted server routes, complete channel semantics, media uploads/streaming, file attachments, WebRTC signaling/audio, push notifications or automatic Android gateway discovery. It is not yet a drop-in replacement for the full Android backend.
+This remains the first standalone server milestone. It does not yet implement all legacy Android-hosted server routes, complete channel semantics, media streaming, WebRTC signaling/audio, push notifications or automatic Android gateway discovery. It is not yet a drop-in replacement for the full Android backend.
 
 Admin sessions are stored in memory and expire after 12 hours. HTTP and WebSocket traffic are unencrypted on the local network. ESP HTTP Basic Authentication is also unencrypted without TLS. Do not expose either dashboard or service to the public internet.
 
