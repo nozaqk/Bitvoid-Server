@@ -62,7 +62,7 @@ export function registerAdminRoutes(app,db,sockets,serverInfo) {
       (SELECT COUNT(*) FROM conversation_members m WHERE m.conversation_id=c.id) AS memberCount,
       (SELECT COUNT(*) FROM messages x WHERE x.conversation_id=c.id) AS messageCount,
       (SELECT MAX(created_at) FROM messages x WHERE x.conversation_id=c.id) AS lastMessageAt
-      FROM conversations c LEFT JOIN users u ON u.id=c.created_by ORDER BY COALESCE(lastMessageAt,c.created_at) DESC`).all();
+      FROM conversations c LEFT JOIN users u ON u.id=c.created_by ORDER BY COALESCE((SELECT MAX(x.created_at) FROM messages x WHERE x.conversation_id=c.id),c.created_at) DESC`).all();
     return {conversations:rows};
   });
   app.get("/admin/api/conversations/:id/messages",{preHandler:auth},async(req,reply)=>{
