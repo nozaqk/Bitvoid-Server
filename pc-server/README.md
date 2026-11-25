@@ -15,6 +15,18 @@ The PC process advertises `bitvoid.local` and `pc-server.local` over mDNS using 
 
 The PC dashboard is deliberately not the main application URL. It is served at the dedicated `pc-server.local:8787/admin` address and uses its own first-run administrator account. The ESP dashboard uses its own credentials configured in the ESP firmware's untracked `config.h`.
 
+## Connect Android clients through the ESP-12E
+
+The ESP-12E is the Wi-Fi access point and discovery controller; the PC server is the BitVoid application/API host. The ESP-12E does not host chat, accounts, media, or audio calls.
+
+1. Connect the computer running this PC server to the ESP Wi-Fi network (default SSID `BitVoid_Local`).
+2. Start this PC server. It listens on `0.0.0.0:8787`.
+3. Connect Android phones to the same ESP Wi-Fi network.
+4. Open BitVoid. Android discovery scans local Wi-Fi devices on port `8787`, verifies `/api/node`, and selects the PC server as the local app gateway.
+5. If the app remains offline, test `http://192.168.4.1/api/v1/health` on the phone, then test `http://<PC-IP-on-ESP-WiFi>:8787/health`. Allow inbound TCP port `8787` in Windows Firewall on the Private network profile.
+
+Connecting only the phone to the ESP access point is not enough: the PC running this server must also be connected to that same Wi-Fi and the server process must be running.
+
 ## Install and run
 
 ```bash
