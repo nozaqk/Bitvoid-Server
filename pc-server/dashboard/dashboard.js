@@ -1,5 +1,5 @@
 const $=id=>document.getElementById(id);
-let overview=null,activePage="overview",refreshTimer=null;
+let overview=null,activePage="overview",refreshTimer=null,mediaRows=[];
 const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const date=value=>value?new Date(value).toLocaleString():"—";
 const ago=value=>{if(!value)return"—";const ms=Date.now()-new Date(value).getTime();if(ms<60000)return"just now";if(ms<3600000)return Math.floor(ms/60000)+"m ago";if(ms<86400000)return Math.floor(ms/3600000)+"h ago";return Math.floor(ms/86400000)+"d ago";};
@@ -12,7 +12,7 @@ $("logoutButton").addEventListener("click",async()=>{try{await api("logout",{met
 $("refreshButton").addEventListener("click",()=>loadDashboard());
 document.querySelectorAll(".nav[data-page]").forEach(b=>b.addEventListener("click",()=>navigate(b.dataset.page)));
 document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click",()=>navigate(b.dataset.goto)));
-function navigate(page){activePage=page;document.querySelectorAll(".nav[data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===page));document.querySelectorAll(".page").forEach(p=>p.classList.add("hidden"));$(page+"Page").classList.remove("hidden");const labels={overview:"Server overview",users:"User management",devices:"Device management",conversations:"Conversations & groups",nodes:"Network nodes",activity:"Activity log",settings:"Server settings"};$("pageName").textContent=page[0].toUpperCase()+page.slice(1);$("pageTitle").textContent=labels[page];if(page==="nodes")loadNodes();if(page==="activity")loadActivity();if(page==="users")loadUsers();if(page==="devices")loadDevices();if(page==="conversations")loadConversations();if(page==="settings")loadSettings();}
+function navigate(page){activePage=page;document.querySelectorAll(".nav[data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===page));document.querySelectorAll(".page").forEach(p=>p.classList.add("hidden"));$(page+"Page").classList.remove("hidden");const labels={overview:"Server overview",users:"User management",devices:"Device management",conversations:"Conversations & groups",media:"Media & files",nodes:"Network nodes",activity:"Activity log",settings:"Server settings"};$("pageName").textContent=page[0].toUpperCase()+page.slice(1);$("pageTitle").textContent=labels[page];if(page==="nodes")loadNodes();if(page==="activity")loadActivity();if(page==="users")loadUsers();if(page==="devices")loadDevices();if(page==="conversations")loadConversations();if(page==="media")loadMedia();if(page==="settings")loadSettings();}
 async function loadDashboard(){try{overview=await api("overview");renderOverview();$("lastUpdated").textContent=new Date().toLocaleTimeString();}catch(error){if(error.message==="unauthorized"){if(refreshTimer)clearInterval(refreshTimer);showLogin(false);}}}
 function renderOverview(){const s=overview.stats;$("statUsers").textContent=s.users;$("statOnline").textContent=s.online;$("statDevices").textContent=s.devices;$("statConversations").textContent=s.conversations;$("statNodes").textContent=s.nodes;$("navUsers").textContent=s.users;$("messageTotal").textContent=s.messages;$("uptime").textContent=duration(overview.server.uptimeSeconds);$("serverMeta").textContent=overview.server.nodeVersion+" · "+overview.server.platform;$("footerVersion").textContent=overview.server.nodeVersion;
 $("serviceList").innerHTML=overview.services.map(x=>`<div class="service-row"><span>${esc(x.name)}</span><span class="service-state ${x.status==="Operational"?"":"warn"}">${esc(x.status)}</span></div>`).join("");
@@ -72,6 +72,30 @@ async function removeGroupMember(conversationId,userId,username){
 }
 $("saveGroupTitleButton").addEventListener("click",saveGroupTitle);
 $("groupTitleInput").addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();saveGroupTitle();}});
+function formatBytes(bytes){
+ if(bytes<1024)return bytes+" B";
+ if(bytes<1024*1024)return (bytes/1024).toFixed(1)+" KB";
+ return (bytes/1024/1024).toFixed(2)+" MB";
+}
+async function loadMedia(){
+ try{
+  const data=await api("media");mediaRows=data.files||[];
+  $("mediaCount").textContent=data.totals?.count??mediaRows.length;
+  $("mediaStorage").textContent=formatBytes(data.totals?.bytes||0);
+  renderMedia();
+ }catch(error){$("mediaTable").innerHTML=emptyRow(7,esc(error.message));}
+}
+function renderMedia(){
+ const q=($("mediaSearch").value||"").toLowerCase();
+ const rows=mediaRows.filter(f=>[f.name,f.mimeType,f.conversationTitle,f.conversationId,f.sender].join(" ").toLowerCase().includes(q));
+ $("mediaTable").innerHTML=rows.map(f=>'<tr><td><div class="media-file"><span class="media-file-icon">'+(f.mimeType.startsWith("image/")?"▧":f.mimeType.startsWith("video/")?"▶":f.mimeType.startsWith("audio/")?"♫":"▤")+'</span><div><b>'+esc(f.name)+'</b><small>'+esc(f.id.slice(0,8))+'</small></div></div></td><td>'+esc(f.mimeType)+'</td><td>'+esc(f.conversationTitle||f.conversationId)+' <small class="muted">'+esc(f.type)+'</small></td><td>'+esc(f.sender)+'</td><td>'+formatBytes(f.sizeBytes)+'</td><td>'+esc(date(f.createdAt))+'</td><td><button class="danger-btn delete-media" data-id="'+esc(f.id)+'" data-name="'+esc(f.name)+'">Delete</button></td></tr>').join("")||emptyRow(7,"No matching attachments");
+ document.querySelectorAll(".delete-media").forEach(button=>button.addEventListener("click",()=>deleteMedia(button.dataset.id,button.dataset.name)));
+}
+async function deleteMedia(id,name){
+ if(!window.confirm("Permanently delete "+name+"? All members of its conversation will lose access."))return;
+ try{await api("media/"+encodeURIComponent(id),{method:"DELETE"});await loadMedia();}
+ catch(error){window.alert("Could not delete file: "+error.message);}
+}
 async function loadSettings(){
  try{const data=await api("settings"),s=data.server,g=data.integrations.gateway,c=data.integrations.cloud,sec=data.security;
  const rows=pairs=>pairs.map(([k,v])=>'<div><span>'+esc(k)+'</span><b>'+esc(v??"—")+'</b></div>').join("");
@@ -82,6 +106,6 @@ async function loadSettings(){
  }catch(e){$("serverSettings").textContent=e.message;}
 }
 $("checkGatewayButton").addEventListener("click",async()=>{const button=$("checkGatewayButton");button.disabled=true;button.textContent="Checking…";try{await api("nodes/gateway/check",{method:"POST"});await loadSettings();if(activePage==="nodes")await loadNodes();button.textContent="Check now ↻";}catch(e){$("gatewayDiagnostic").textContent=e.message;button.textContent="Retry ↻";}finally{button.disabled=false;}});
-$("userSearch").addEventListener("input",loadUsers);$("deviceSearch").addEventListener("input",loadDevices);$("conversationSearch").addEventListener("input",renderConversations);
+$("userSearch").addEventListener("input",loadUsers);$("deviceSearch").addEventListener("input",loadDevices);$("conversationSearch").addEventListener("input",renderConversations);$("mediaSearch").addEventListener("input",renderMedia);$("refreshMediaButton").addEventListener("click",loadMedia);
 window.addEventListener("resize",()=>{if(overview)drawChart();});
 boot();
