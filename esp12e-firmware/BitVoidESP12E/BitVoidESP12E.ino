@@ -37,7 +37,7 @@ void sendJson(int status, JsonDocument& doc) {
   serializeJson(doc, body);
   server.sendHeader("Cache-Control", "no-store");
   server.sendHeader("X-BitVoid-Server-Id", BITVOID_GATEWAY_ID);
-  server.sendHeader("X-BitVoid-Protocol", "BVT-1");
+  server.sendHeader("X-BitVoid-Trust-Protocol", "BVT-1");
   server.sendHeader("Access-Control-Allow-Origin", "*");
   server.send(status, "application/json; charset=utf-8", body);
 }
