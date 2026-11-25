@@ -34,8 +34,10 @@
    <button class="nav active" data-page="overview"><i>◫</i> Overview</button>
    <button class="nav" data-page="users"><i>♙</i> Users <b id="navUsers">0</b></button>
    <button class="nav" data-page="devices"><i>▣</i> Devices</button>
+   <button class="nav" data-page="conversations"><i>☷</i> Conversations</button>
    <button class="nav" data-page="nodes"><i>⌘</i> Network nodes</button>
    <button class="nav" data-page="activity"><i>◷</i> Activity log</button>
+   <button class="nav" data-page="settings"><i>⚙</i> Settings</button>
   </nav>
   <div class="sidebar-bottom">
    <div class="secure-pill"><span class="pulse"></span><div><b>Local server</b><small>Private network mode</small></div></div>
@@ -69,6 +71,22 @@
   <section id="devicesPage" class="page hidden"><div class="panel"><div class="panel-head"><div><h3>Paired devices</h3><p class="muted">Devices authorized to access this server</p></div><input class="search" id="deviceSearch" placeholder="Search devices…" aria-label="Search devices"></div><div class="table-wrap"><table><thead><tr><th>DEVICE ID</th><th>ASSIGNED USER</th><th>CONNECTION</th><th>LAST SEEN</th><th>PAIRED</th></tr></thead><tbody id="devicesTable"></tbody></table></div></div></section>
   <section id="nodesPage" class="page hidden"><div class="node-grid" id="nodesGrid"></div><div class="panel note-panel"><h3>Network topology</h3><p class="muted">The ESP-12E provides the Wi-Fi access point. The PC runs the BitVoid application server and dashboard. Client devices connect to the ESP Wi-Fi and communicate with the PC server over the local network.</p><div class="topology"><div class="topo-node gateway">ESP-12E<small>Wi-Fi gateway</small></div><div class="topo-line"></div><div class="topo-node pc">PC SERVER<small>API · Database · Dashboard</small></div><div class="topo-line"></div><div class="topo-node clients">CLIENT DEVICES<small>Android · Desktop</small></div></div><p class="muted tiny">The PC server checks the ESP protected status endpoint every 10 seconds. Configure matching ESP dashboard credentials in the PC server .env file to enable live telemetry. Missing credentials or an unreachable gateway are reported honestly.</p></div></section>
   <section id="activityPage" class="page hidden"><div class="panel"><div class="panel-head"><div><h3>Server activity</h3><p class="muted">Administrative and messaging events captured by the server</p></div><span class="tag">LATEST 100</span></div><div id="activityTable" class="activity-table"></div></div></section>
+  <section id="conversationsPage" class="page hidden">
+   <div class="panel">
+    <div class="panel-head"><div><h3>Conversations and groups</h3><p class="muted">Inspect direct conversations, group membership and message activity</p></div><input class="search" id="conversationSearch" placeholder="Search conversations…" aria-label="Search conversations"></div>
+    <div class="table-wrap"><table><thead><tr><th>TYPE</th><th>CONVERSATION</th><th>CREATED BY</th><th>MEMBERS</th><th>MESSAGES</th><th>LAST MESSAGE</th><th>CREATED</th></tr></thead><tbody id="conversationsTable"></tbody></table></div>
+   </div>
+   <div class="panel conversation-inspector" id="conversationInspector"><div class="panel-head"><div><h3 id="conversationTitle">Conversation inspector</h3><p class="muted" id="conversationMeta">Select a conversation to inspect its members and recent messages</p></div><span class="tag">READ ONLY</span></div><div id="conversationMembers" class="member-chips"></div><div id="conversationMessages" class="activity-list"><p class="muted tiny">Messages will appear here after selecting a conversation.</p></div></div>
+  </section>
+  <section id="settingsPage" class="page hidden">
+   <div class="node-grid">
+    <article class="node-card"><div class="node-head"><div><h3>PC server</h3><p>Runtime and local network configuration</p></div><span class="node-type">RUNNING</span></div><div class="node-details" id="serverSettings"></div></article>
+    <article class="node-card"><div class="node-head"><div><h3>Cloud integration</h3><p>Cloud sync connection state</p></div><span class="node-type" id="cloudStatus">—</span></div><div class="node-details" id="cloudSettings"></div></article>
+    <article class="node-card"><div class="node-head"><div><h3>ESP-12E gateway</h3><p>Read-only gateway health integration</p></div><button class="text-btn" id="checkGatewayButton">Check now ↻</button></div><div class="node-details" id="gatewaySettings"></div><p class="muted tiny" id="gatewayDiagnostic"></p></article>
+    <article class="node-card"><div class="node-head"><div><h3>Security posture</h3><p>Current admin session and transport settings</p></div><span class="node-type">LOCAL</span></div><div class="node-details" id="securitySettings"></div></article>
+   </div>
+   <div class="panel note-panel"><h3>Configuration changes</h3><p class="muted">This page currently reports configuration safely. To change ports, gateway credentials, cloud URLs or sync secrets, edit the private <code>.env</code> file on the PC and restart the server. Secret values are never displayed here.</p></div>
+  </section>
   <footer>BITVOID CONTROL CENTER <span>·</span> Secure local administration <span>·</span> <span id="footerVersion">Node</span></footer>
  </main>
 </div>
