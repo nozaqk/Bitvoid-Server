@@ -15,6 +15,28 @@ const TYPES={
   "video/mp4":".mp4","video/webm":".webm"
 };
 const uploadDir=path.join(getStateDirectory(),"uploads");
+
+export async function reconcileAttachmentStorage(db){
+  await fs.mkdir(uploadDir,{recursive:true});
+  const rows=db.prepare("SELECT id,storage_name AS storageName FROM attachments").all();
+  const referenced=new Set(rows.map(row=>row.storageName));
+  let missingMetadata=0,orphanFiles=0;
+  for(const row of rows){
+    try{await fs.access(path.join(uploadDir,row.storageName));}
+    catch(error){
+      if(error.code!=="ENOENT")throw error;
+      db.prepare("DELETE FROM attachments WHERE id=?").run(row.id);
+      missingMetadata++;
+    }
+  }
+  const entries=await fs.readdir(uploadDir,{withFileTypes:true});
+  for(const entry of entries){
+    if(!entry.isFile()||referenced.has(entry.name))continue;
+    await fs.rm(path.join(uploadDir,entry.name),{force:true});
+    orphanFiles++;
+  }
+  return {missingMetadata,orphanFiles};
+}
 const safeName=value=>{
   const name=path.basename(String(value||"").replace(/\\/g,"/")).replace(/[\\u0000-\\u001f\\u007f]/g,"").trim();
   return name.slice(0,160)||"attachment";
