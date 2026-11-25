@@ -14,7 +14,47 @@ async function refreshCloudStatus(){try{const data=await call("/cloud/status");$
 $("cloud-form").addEventListener("submit",async e=>{e.preventDefault();$("cloud-notice").textContent="Checking cloud credentials and linking profile…";const button=$("cloud-form").querySelector("button");button.disabled=true;try{const result=await call("/cloud/link",{method:"POST",body:JSON.stringify({email:$("cloud-email").value.trim(),password:$("cloud-password").value})});$("cloud-password").value="";$("cloud-notice").textContent="Linked successfully. "+(result.applied?.applied||0)+" cloud updates applied.";await refreshCloudStatus()}catch(error){$("cloud-notice").textContent=error.message}finally{button.disabled=false}});
 
 async function loadConversations(){try{const data=await call("/conversations");conversations=Array.isArray(data)?data:data.conversations||[];$("conversation-list").replaceChildren();for(const c of conversations){const b=document.createElement("button");b.className="conversation"+(active===c.id?" active":"");b.textContent=c.title||c.type+" conversation";b.addEventListener("click",()=>openConversation(c.id,b.textContent));$("conversation-list").append(b)}if(active){const c=conversations.find(x=>x.id===active);if(c)await openConversation(c.id,c.title||"Conversation")}}catch(error){notice(error.message)}}
-async function openConversation(id,title){active=id;$("thread-title").textContent=title;$("message").disabled=false;$("send-form").querySelector("button").disabled=false;document.querySelectorAll(".conversation").forEach(b=>b.classList.toggle("active",b.textContent===title));try{const data=await call("/conversations/"+encodeURIComponent(id)+"/messages");$("messages").replaceChildren();for(const m of data.messages||[]){const el=document.createElement("div");el.className="message"+(m.senderId===user.id?" mine":"");const who=document.createElement("small");who.textContent=m.sender||"Member";const body=document.createElement("div");body.textContent=m.body;el.append(who,body);$("messages").append(el)}if(!data.messages?.length)$("messages").innerHTML='<p class="muted">No messages yet. Start the conversation.</p>';$("messages").scrollTop=$("messages").scrollHeight}catch(error){notice(error.message)}}
+async function openConversation(id,title){active=id;$("thread-title").textContent=title;$("message").disabled=false;$("send-form").querySelector("button").disabled=false;$("attachmentInput").disabled=false;$("uploadAttachmentButton").disabled=false;document.querySelectorAll(".conversation").forEach(b=>b.classList.toggle("active",b.textContent===title));try{const data=await call("/conversations/"+encodeURIComponent(id)+"/messages");$("messages").replaceChildren();for(const m of data.messages||[]){const el=document.createElement("div");el.className="message"+(m.senderId===user.id?" mine":"");const who=document.createElement("small");who.textContent=m.sender||"Member";const body=document.createElement("div");body.textContent=m.body;el.append(who,body);$("messages").append(el)}if(!data.messages?.length)$("messages").innerHTML='<p class="muted">No messages yet. Start the conversation.</p>';$("messages").scrollTop=$("messages").scrollHeight;await loadAttachments(id)}catch(error){notice(error.message)}}
+function fileSize(bytes){return bytes<1024?bytes+" B":bytes<1024*1024?(bytes/1024).toFixed(1)+" KB":(bytes/1024/1024).toFixed(2)+" MB"}
+async function loadAttachments(conversationId){
+ const box=$("attachments");box.replaceChildren();
+ try{
+  const data=await call("/conversations/"+encodeURIComponent(conversationId)+"/attachments");
+  if(!data.attachments?.length){const empty=document.createElement("small");empty.className="muted";empty.textContent="No shared files yet.";box.append(empty);return}
+  const title=document.createElement("strong");title.textContent="SHARED FILES";box.append(title);
+  for(const file of data.attachments){
+   const row=document.createElement("div");row.className="attachment-row";
+   const info=document.createElement("div");const name=document.createElement("b");name.textContent=file.name;
+   const meta=document.createElement("small");meta.textContent=file.sender+" · "+fileSize(file.sizeBytes);info.append(name,meta);
+   const button=document.createElement("button");button.className="quiet";button.textContent="Download";button.addEventListener("click",()=>downloadAttachment(file.id,file.name));
+   row.append(info,button);box.append(row);
+  }
+ }catch(error){const msg=document.createElement("small");msg.className="muted";msg.textContent="Could not load shared files: "+error.message;box.append(msg)}
+}
+async function downloadAttachment(id,name){
+ try{
+  const response=await fetch(API+"/attachments/"+encodeURIComponent(id),{headers:{Authorization:"Bearer "+token}});
+  if(!response.ok)throw new Error("Download failed");
+  const blob=await response.blob(),url=URL.createObjectURL(blob),link=document.createElement("a");
+  link.href=url;link.download=name;document.body.append(link);link.click();link.remove();URL.revokeObjectURL(url);
+ }catch(error){$("attachmentNotice").textContent=error.message}
+}
+$("uploadAttachmentButton").addEventListener("click",async()=>{
+ const file=$("attachmentInput").files?.[0];if(!file||!active)return;
+ if(file.size>8*1024*1024){$("attachmentNotice").textContent="Files must be 8 MB or smaller.";return}
+ $("uploadAttachmentButton").disabled=true;$("attachmentNotice").textContent="Uploading…";
+ try{
+  const response=await fetch(API+"/conversations/"+encodeURIComponent(active)+"/attachments",{method:"POST",headers:{Authorization:"Bearer "+token,"Content-Type":"application/octet-stream","X-BitVoid-File-Name":encodeURIComponent(file.name),"X-BitVoid-File-Type":file.type},body:file});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(result.message||result.error||"Upload failed");
+  $("attachmentInput").value="";$("attachmentNotice").textContent="Uploaded "+result.name;
+  await loadAttachments(active);
+ }catch(error){$("attachmentNotice").textContent=error.message}
+ finally{$("uploadAttachmentButton").disabled=false}
+});
+$("attachmentInput").addEventListener("change",()=>{
+ const file=$("attachmentInput").files?.[0];$("attachmentNotice").textContent=file?file.name+" · "+fileSize(file.size):"";
+});
 $("new-chat").addEventListener("submit",async e=>{e.preventDefault();try{const data=await call("/conversations",{method:"POST",body:JSON.stringify({type:"direct",members:[$("member").value.trim()]})});active=data.id;$("member").value="";await loadConversations();await openConversation(data.id,"Direct conversation")}catch(error){notice(error.message)}});
 $("send-form").addEventListener("submit",async e=>{e.preventDefault();const body=$("message").value.trim();if(!body||!active)return;try{await call("/conversations/"+encodeURIComponent(active)+"/messages",{method:"POST",body:JSON.stringify({body})});$("message").value="";await openConversation(active,"Conversation")}catch(error){notice(error.message)}});
 $("disconnect").addEventListener("click",()=>{token="";user=null;active=null;localStorage.removeItem("bitvoid.local.deviceToken");$("chat-panel").hidden=true;$("setup-panel").hidden=false;showStep("pair");notice("This browser has been disconnected. Pair it again to use BitVoid.")});
