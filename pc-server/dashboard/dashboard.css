@@ -122,3 +122,15 @@ footer{padding:26px 0 8px;color:#73808D;font:9px "JetBrains Mono",monospace;lett
 .member-remove:hover{color:#ff8298}
 #groupAdminMessage{min-height:16px;margin:10px 0 0}
 @media(max-width:520px){.group-title-editor>div{flex-direction:column}.group-title-editor .primary{min-height:40px}}
+
+/* Media administration */
+.media-stats{grid-template-columns:repeat(2,minmax(180px,1fr));max-width:520px;margin-bottom:16px}
+.media-tools{display:flex;align-items:center;gap:12px}
+.media-tools .search{min-width:220px}
+.media-file{display:flex;align-items:center;gap:10px;min-width:180px}
+.media-file-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:9px;background:#092530;color:#00D1FF;font-size:17px;flex:none}
+.media-file b,.media-file small{display:block;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.media-file b{font-size:12px}.media-file small{font:10px 'JetBrains Mono',monospace;color:#8B949E;margin-top:3px}
+#mediaTable td{font-size:11px;vertical-align:middle}#mediaTable td small{display:block;font-size:10px;margin-top:3px}
+.media-note{margin:14px 2px}
+@media(max-width:700px){.media-tools{width:100%;flex-direction:column;align-items:stretch}.media-tools .search{min-width:0;width:100%}.media-stats{grid-template-columns:1fr 1fr}}
