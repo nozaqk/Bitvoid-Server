@@ -35,7 +35,7 @@ export function registerAccountAuthRoutes(app) {
     );
   `);
 
-  app.post("/api/v1/auth/register", async (req, reply) => {
+  app.post("/api/v1/account/register", async (req, reply) => {
     const username = String(req.body?.username || "").trim().toLowerCase();
     const password = req.body?.password;
     if (!USERNAME.test(username)) return bad(reply, 400, "invalid_username", "Username must be 3-24 letters, numbers, dots, underscores or hyphens.");
@@ -67,7 +67,7 @@ export function registerAccountAuthRoutes(app) {
     });
   });
 
-  app.post("/api/v1/auth/login", async (req, reply) => {
+  app.post("/api/v1/account/login", async (req, reply) => {
     const username = String(req.body?.username || "").trim().toLowerCase();
     const password = req.body?.password;
     if (!USERNAME.test(username) || typeof password !== "string") return bad(reply, 401, "invalid_credentials", "Username or password is incorrect.");
@@ -78,7 +78,7 @@ export function registerAccountAuthRoutes(app) {
     return reply.send({ ...issueSession(user), expiresIn: 0 });
   });
 
-  app.post("/api/v1/auth/recover", async (req, reply) => {
+  app.post("/api/v1/account/recover", async (req, reply) => {
     const master = String(req.body?.masterPassphrase || "");
     const newPassword = req.body?.newPassword;
     if (!MASTER.test(master) || !validPassword(newPassword))
@@ -92,7 +92,7 @@ export function registerAccountAuthRoutes(app) {
     return reply.send({ ...issueSession(row), expiresIn: 0 });
   });
 
-  app.post("/api/v1/auth/password/change", async (req, reply) => {
+  app.post("/api/v1/account/password/change", async (req, reply) => {
     const token = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
     const { authenticateToken } = await import("./auth.js");
     const device = authenticateToken(token);
