@@ -86,6 +86,10 @@ The response contains a device-scoped bearer token. Store it securely on the cli
 | GET | `/api/v1/health` | Health and uptime |
 | GET | `/api/v1/services` | Capability list |
 | GET | `/api/v1/devices` | Paired device list |
+| POST | `/api/v1/auth/register` | Create username/password account and issue one-time master recovery passphrase |
+| POST | `/api/v1/auth/login` | Username/password account login |
+| POST | `/api/v1/auth/recover` | Reset password using the 44-character hexadecimal master passphrase |
+| POST | `/api/v1/auth/password/change` | Change password for an authenticated account |
 | POST | `/api/v1/pairing/request` | Create 120-second challenge |
 | POST | `/api/v1/pairing/approve` | Approve and issue device token |
 | POST | `/api/v1/users/register` | Register paired device username |
@@ -126,3 +130,8 @@ Admin sessions are stored in memory and expire after 12 hours. HTTP and WebSocke
 Node's built-in `node:sqlite` requires Node.js 22.13+. Some Node releases print an experimental warning. Source has not been compiled on the target PC or flashed/tested on physical ESP-12E hardware.
 
 No GitHub Actions workflows are used.
+
+
+### Account authentication and recovery
+
+The PC server supports the same account endpoints as BitVoid Cloud. Registration accepts a username and password (minimum 10 characters) and returns a 44-character hexadecimal master passphrase exactly once. The server stores a scrypt password verifier and a SHA-256 lookup digest of the high-entropy recovery secret; it never stores the master passphrase itself. Recovery accepts the master passphrase and a new password and does not require the username. Keep an offline copy of the master passphrase. These local accounts are stored on this PC server; they are not automatically synchronized with cloud account credentials.
