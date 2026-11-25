@@ -1,5 +1,4 @@
 import Fastify from "fastify";
-import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
 import { Bonjour } from "bonjour-service";
 import { randomUUID } from "node:crypto";
@@ -40,7 +39,6 @@ app.addHook("onSend", async (_request, reply, payload) => {
   reply.header("X-BitVoid-Trust-Protocol", "BVT-1");
   return payload;
 });
-await app.register(cors, { origin: true });
 await app.register(websocket);
 app.addContentTypeParser("application/octet-stream",{parseAs:"buffer",bodyLimit:8*1024*1024},(_req,body,done)=>done(null,body));
 
@@ -233,7 +231,6 @@ try {
   console.log("\nBitVoid PC Server is running.");
   console.log("Main application/API: http://bitvoid.local:" + PORT);
   for (const item of getLanAddresses(PORT)) console.log("LAN fallback (" + item.interface + "): " + item.url);
-  console.log("ESP administrator dashboard: http://esp-server.local/admin");
   console.log("WebSocket: ws://bitvoid.local:" + PORT + "/api/v1/events?token=<device-token>");
   console.log("Administrator pairing code: " + adminCode);
   console.log("Keep setup codes private. Local-network HTTP/WS only; do not expose to the public internet.\n");
