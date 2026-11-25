@@ -90,6 +90,28 @@ export function registerAdminRoutes(app,db,sockets,serverInfo) {
     const members=db.prepare(`SELECT u.id,u.username,m.joined_at AS joinedAt FROM conversation_members m JOIN users u ON u.id=m.user_id WHERE m.conversation_id=? ORDER BY m.joined_at`).all(req.params.id);
     return {messages,members};
   });
+  app.patch("/admin/api/conversations/:id",{preHandler:auth},async(req,reply)=>{
+    const conversation=db.prepare("SELECT id,type,title FROM conversations WHERE id=?").get(req.params.id);
+    if(!conversation)return reply.code(404).send({error:"conversation_not_found"});
+    if(conversation.type!=="group")return reply.code(409).send({error:"only_groups_can_be_renamed"});
+    const title=String(req.body?.title||"").trim().slice(0,80);
+    if(title.length<1)return reply.code(400).send({error:"group_name_required"});
+    db.prepare("UPDATE conversations SET title=? WHERE id=?").run(title,conversation.id);
+    activity(db,"group.renamed",conversation.id+" · "+title);
+    return {ok:true,id:conversation.id,title};
+  });
+  app.delete("/admin/api/conversations/:id/members/:userId",{preHandler:auth},async(req,reply)=>{
+    const conversation=db.prepare("SELECT id,type,title FROM conversations WHERE id=?").get(req.params.id);
+    if(!conversation)return reply.code(404).send({error:"conversation_not_found"});
+    if(conversation.type!=="group")return reply.code(409).send({error:"members_can_only_be_removed_from_groups"});
+    const member=db.prepare("SELECT u.id,u.username FROM conversation_members m JOIN users u ON u.id=m.user_id WHERE m.conversation_id=? AND m.user_id=?").get(conversation.id,req.params.userId);
+    if(!member)return reply.code(404).send({error:"group_member_not_found"});
+    const count=db.prepare("SELECT COUNT(*) AS n FROM conversation_members WHERE conversation_id=?").get(conversation.id).n;
+    if(count<=1)return reply.code(409).send({error:"group_must_keep_at_least_one_member"});
+    db.prepare("DELETE FROM conversation_members WHERE conversation_id=? AND user_id=?").run(conversation.id,member.id);
+    activity(db,"group.member_removed",conversation.id+" · "+member.username);
+    return {ok:true,conversationId:conversation.id,userId:member.id,username:member.username};
+  });
   app.get("/admin/api/settings",{preHandler:auth},async()=>{
     const gateway=serverInfo.gatewayMonitor?.getSnapshot()||{status:"not-configured",configured:false,error:"Gateway monitor unavailable."};
     return {server:{name:serverInfo.name,host:process.env.HOST||"0.0.0.0",port:Number(process.env.PORT||8787),platform:process.platform,nodeVersion:process.version,stateDirectory:process.env.BITVOID_STATE_DIR||".state",uptimeSeconds:Math.floor(process.uptime())},
