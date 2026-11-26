@@ -26,8 +26,9 @@ const bonjour = new Bonjour({}, error => console.warn("[BitVoid] mDNS responder 
 const mdnsServices = [];
 const gatewayMonitor = createGatewayMonitor();
 gatewayMonitor.start();
+const CLOUD_SYNC_ENABLED = process.env.BITVOID_CLOUD_SYNC_ENABLED === "true";
 const cloudSync = createCloudSync(db, {
-  url:process.env.BITVOID_CLOUD_SYNC_URL,
+  url:CLOUD_SYNC_ENABLED ? process.env.BITVOID_CLOUD_SYNC_URL : "",
   nodeId:PC_SERVER_ID,
   secret:PC_SERVER_SECRET,
   cloudServerId:process.env.BITVOID_CLOUD_SERVER_ID || "bv-cloud-server-001"
@@ -99,7 +100,7 @@ app.get("/api/v1/services", async () => ({ services: [
 app.get("/api/v1/devices", { preHandler: requireDevice }, async () => ({ devices: db.prepare("SELECT id,created_at AS createdAt,last_seen AS lastSeen FROM devices ORDER BY created_at").all() }));
 app.get("/api/node", async (_req, reply) => {
   reply.header("X-BitVoid-Node","1").header("X-BitVoid-Protocol","2").header("X-BitVoid-Identity","local-identity-v1");
-  return { service: "bitvoid", protocolVersion: 2, identityMode: "local-identity-v1", nodeId: PC_SERVER_ID, nodeType: "pc-gateway", coordinator: false, portalAvailable: true, gatewayPriority: 50, port: PORT };
+  return { service: "bitvoid", protocolVersion: 2, identityMode: "local-identity-v1", nodeId: PC_SERVER_ID, nodeType: "pc-gateway", coordinator: false, portalAvailable: false, gatewayPriority: 50, port: PORT };
 });
 app.get("/api/mesh/nodes", async () => ({ service: "bitvoid", protocolVersion: 2, nodes: [{ nodeId: PC_SERVER_ID, nodeType: "pc-gateway", coordinator: false, portalAvailable: true, gatewayPriority: 50, port: PORT }] }));
 
@@ -133,7 +134,7 @@ app.post("/api/v1/cloud/link", { preHandler: requireUser }, async (req,reply) =>
   const email=String(req.body?.email||"").trim().toLowerCase();
   const password=String(req.body?.password||"");
   const cloudUrl=String(process.env.BITVOID_CLOUD_SYNC_URL||"").replace(/\/$/,"");
-  if(!cloudUrl || PC_SERVER_SECRET.length<32) return reply.code(503).send({error:"cloud_not_configured",message:"Cloud URL and the registered PC server secret (at least 32 characters) must be configured."});
+  if(process.env.BITVOID_CLOUD_SYNC_ENABLED !== "true" || !cloudUrl || PC_SERVER_SECRET.length<32) return reply.code(503).send({error:"cloud_not_configured",message:"Cloud sync is disabled. Enable BITVOID_CLOUD_SYNC_ENABLED=true and configure the cloud URL and registered PC server secret to link a cloud account."});
   try {
     const expectedCloudId=process.env.BITVOID_CLOUD_SERVER_ID||"bv-cloud-server-001";
     const login=await fetch(cloudUrl+"/api/v1/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password}),signal:AbortSignal.timeout(12000)});
