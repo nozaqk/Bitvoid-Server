@@ -41,7 +41,7 @@ Copy .env.example to .env, set BITVOID_TOKEN_SECRET to the output of openssl ran
 2. Find the computer's LAN IPv4 address: ipconfig on Windows, ip addr on Linux, or ipconfig getifaddr en0 on macOS.
 3. Allow inbound TCP port 8787 through the computer firewall on the private network only.
 4. Test from the phone: http://HOST-LAN-IP:8787/api/v1/health
-5. Configure the Android app to use http://HOST-LAN-IP:8787 until automatic LAN discovery is integrated.
+5. The Android app can discover the Server through the BitVoid mDNS/DNS-SD advertisement. If discovery is unavailable on your network, configure http://HOST-LAN-IP:8787 manually when the app exposes Server settings.
 
 The Server binds to 0.0.0.0 by default. Do not assume 192.168.4.1 is the Server; use the computer's actual LAN address.
 
