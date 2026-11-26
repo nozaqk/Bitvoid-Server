@@ -164,8 +164,14 @@ app.post("/api/v1/conversations", { preHandler: requireUser }, async (req, reply
   const type = req.body?.type === "group" ? "group" : "direct";
   const title = typeof req.body?.title === "string" ? req.body.title.trim().slice(0,80) : null;
   const names = Array.isArray(req.body?.members) ? [...new Set(req.body.members.map(v => String(v).trim()).filter(Boolean))] : [];
-  const users = names.length ? db.prepare("SELECT id,username FROM users WHERE username IN (" + names.map(() => "?").join(",") + ")").all(...names) : [];
-  if (names.length !== users.length) return reply.code(400).send({ error: "unknown_member", message: "One or more usernames do not exist." });
+  const participantIds = Array.isArray(req.body?.participantIds) ? [...new Set(req.body.participantIds.map(v => String(v).trim()).filter(Boolean))] : [];
+  const users = names.length
+    ? db.prepare("SELECT id,username FROM users WHERE username IN (" + names.map(() => "?").join(",") + ")").all(...names)
+    : participantIds.length
+      ? db.prepare("SELECT id,username FROM users WHERE id IN (" + participantIds.map(() => "?").join(",") + ")").all(...participantIds)
+      : [];
+  const suppliedMemberCount = names.length || participantIds.length;
+  if (suppliedMemberCount !== users.length) return reply.code(400).send({ error: "unknown_member", message: "One or more conversation members do not exist." });
   if (type === "direct" && users.length !== 1) return reply.code(400).send({ error: "direct_requires_one_other_member" });
   if (type === "group" && users.length < 1) return reply.code(400).send({ error: "group_requires_members" });
   const id = randomUUID(), now = new Date().toISOString();
@@ -195,9 +201,19 @@ app.get("/api/v1/conversations/:id/messages", { preHandler: requireUser }, async
 });
 app.post("/api/v1/conversations/:id/messages", { preHandler: requireUser }, async (req, reply) => {
   if (!memberOf(req.params.id,req.user.id)) return reply.code(403).send({ error: "not_a_member" });
-  const body = typeof req.body?.body === "string" ? req.body.body.trim() : "";
+  const bodyValue = typeof req.body?.body === "string" ? req.body.body : req.body?.content;
+  const body = typeof bodyValue === "string" ? bodyValue.trim() : "";
   if (!body || body.length > 4000) return reply.code(400).send({ error: "invalid_message", message: "Message must contain 1-4000 characters." });
-  const message = { id:randomUUID(),conversationId:req.params.id,senderId:req.user.id,sender:req.user.username,body,createdAt:new Date().toISOString() };
+  const idempotencyKey = String(req.headers["idempotency-key"] || "").trim();
+  const messageId = /^[a-zA-Z0-9._:-]{8,128}$/.test(idempotencyKey) ? idempotencyKey : randomUUID();
+  const message = { id:messageId,conversationId:req.params.id,senderId:req.user.id,sender:req.user.username,body,createdAt:new Date().toISOString() };
+  const existing = db.prepare("SELECT id,conversation_id AS conversationId,sender_id AS senderId,body,created_at AS createdAt FROM messages WHERE id=?").get(message.id);
+  if (existing) {
+    if (existing.conversationId !== message.conversationId || existing.senderId !== message.senderId || existing.body !== body) {
+      return reply.code(409).send({ error:"idempotency_conflict", message:"This message ID was already used for a different message." });
+    }
+    return reply.code(200).send({ ...existing, sender:req.user.username });
+  }
   db.prepare("INSERT INTO messages(id,conversation_id,sender_id,body,created_at) VALUES(?,?,?,?,?)").run(message.id,message.conversationId,message.senderId,body,message.createdAt);
   sendToConversation(message.conversationId,{ type:"message.created",data:message });
   cloudSync.enqueue("message", message.id, { ...message });
@@ -206,7 +222,9 @@ app.post("/api/v1/conversations/:id/messages", { preHandler: requireUser }, asyn
 });
 
 app.get("/api/v1/events", { websocket:true }, (socket,req) => {
-  const token = String(req.query?.token || "");
+  const authorization = String(req.headers.authorization || "");
+  const bearerToken = authorization.match(/^Bearer\\s+(.+)$/i)?.[1] || "";
+  const token = String(req.query?.token || bearerToken);
   const device = authenticateToken(token);
   if (!device) { socket.close(1008,"Unauthorized"); return; }
   const user = userForDevice(device.id);
