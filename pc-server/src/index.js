@@ -102,7 +102,7 @@ app.get("/api/node", async (_req, reply) => {
   reply.header("X-BitVoid-Node","1").header("X-BitVoid-Protocol","2").header("X-BitVoid-Identity","local-identity-v1");
   return { service: "bitvoid", protocolVersion: 2, identityMode: "local-identity-v1", nodeId: PC_SERVER_ID, nodeType: "pc-gateway", coordinator: false, portalAvailable: false, gatewayPriority: 50, port: PORT };
 });
-app.get("/api/mesh/nodes", async () => ({ service: "bitvoid", protocolVersion: 2, nodes: [{ nodeId: PC_SERVER_ID, nodeType: "pc-gateway", coordinator: false, portalAvailable: true, gatewayPriority: 50, port: PORT }] }));
+app.get("/api/mesh/nodes", async () => ({ service: "bitvoid", protocolVersion: 2, nodes: [{ nodeId: PC_SERVER_ID, nodeType: "pc-gateway", coordinator: false, portalAvailable: false, gatewayPriority: 50, port: PORT }] }));
 
 app.post("/api/v1/pairing/request", async (req, reply) => {
   const deviceId = String(req.body?.deviceId || "").trim();
