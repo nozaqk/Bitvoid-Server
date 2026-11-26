@@ -135,7 +135,7 @@ void sendDevices() {
 }
 
 void sendInternalStatus() {
-  if (!requireTrustedPcServer()) return;
+  if (!requireTrustedServer()) return;
 
   StaticJsonDocument<512> doc;
   doc["status"] = "online";
