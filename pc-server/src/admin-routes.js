@@ -109,7 +109,7 @@ export function registerAdminRoutes(app,db,sockets,serverInfo) {
   app.get("/admin/api/settings",{preHandler:auth},async()=>{
     const gateway=serverInfo.gatewayMonitor?.getSnapshot()||{status:"not-configured",configured:false,error:"Gateway monitor unavailable."};
     return {server:{name:serverInfo.name,host:process.env.HOST||"0.0.0.0",port:Number(process.env.PORT||8787),platform:process.platform,nodeVersion:process.version,stateDirectory:process.env.BITVOID_STATE_DIR||".state",uptimeSeconds:Math.floor(process.uptime())},
-      integrations:{gateway:{configured:gateway.configured,status:gateway.status,endpoint:gateway.endpoint,error:gateway.error},cloud:{configured:Boolean(process.env.BITVOID_CLOUD_SYNC_URL&&String(process.env.BITVOID_SYNC_SECRET||"").length>=32),url:process.env.BITVOID_CLOUD_SYNC_URL||null,nodeId:process.env.BITVOID_CLOUD_NODE_ID||"bitvoid-campus-node"}},
+      integrations:{gateway:{configured:gateway.configured,status:gateway.status,endpoint:gateway.endpoint,error:gateway.error},cloud:{enabled:process.env.BITVOID_CLOUD_SYNC_ENABLED==="true",configured:process.env.BITVOID_CLOUD_SYNC_ENABLED==="true"&&Boolean(process.env.BITVOID_CLOUD_SYNC_URL&&String(process.env.BITVOID_PC_SERVER_SECRET||"").length>=32),url:process.env.BITVOID_CLOUD_SYNC_ENABLED==="true"?(process.env.BITVOID_CLOUD_SYNC_URL||null):null,nodeId:process.env.BITVOID_PC_SERVER_ID||"bv-pc-server-001"}},
       security:{adminSessionHours:12,sessionCookie:"HttpOnly · SameSite=Strict",localNetworkOnly:true,httpsConfigured:false}};
   });
   app.post("/admin/api/nodes/gateway/check",{preHandler:auth},async()=>{
