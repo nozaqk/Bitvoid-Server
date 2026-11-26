@@ -12,7 +12,7 @@
 ESP8266WebServer server(80);
 const IPAddress gatewayIp(192, 168, 4, 1);
 const IPAddress subnetMask(255, 255, 255, 0);
-const char* gatewayHostname = "esp-server";
+const char* gatewayHostname = "bitvoid-gateway";
 const char* identityMode = "local-identity-v1";
 unsigned long bootMillis = 0;
 bool mdnsReady = false;
@@ -26,7 +26,7 @@ void sendJson(int status, JsonDocument& doc) {
   server.send(status, "application/json; charset=utf-8", body);
 }
 
-bool requireTrustedPcServer() {
+bool requireTrustedServer() {
   const String suppliedId = server.header("X-BitVoid-Server-Id");
   const String suppliedKey = server.header("X-BitVoid-Server-Key");
   const String expectedKey = BITVOID_ESP_TRUST_SECRET;
@@ -36,14 +36,14 @@ bool requireTrustedPcServer() {
 
   StaticJsonDocument<192> error;
   error["error"] = "server_identity_rejected";
-  error["message"] = "A registered PC server identity and valid server key are required.";
+  error["message"] = "A registered server identity and valid server key are required.";
   sendJson(401, error);
   return false;
 }
 
 void sendRoot() {
   StaticJsonDocument<256> doc;
-  doc["service"] = "BitVoid ESP-12E Gateway";
+  doc["service"] = "BitVoid Gateway";
   doc["role"] = "wifi-ap-and-discovery";
   doc["messagingServer"] = false;
   doc["gatewayIp"] = WiFi.softAPIP().toString();
@@ -140,7 +140,7 @@ void sendInternalStatus() {
   StaticJsonDocument<512> doc;
   doc["status"] = "online";
   doc["gatewayId"] = BITVOID_GATEWAY_ID;
-  doc["hostname"] = "esp-server.local";
+  doc["hostname"] = "bitvoid-gateway.local";
   doc["ssid"] = BITVOID_AP_SSID;
   doc["ip"] = WiFi.softAPIP().toString();
   doc["mac"] = WiFi.softAPmacAddress();
@@ -172,7 +172,7 @@ void sendNodeIdentity() {
 void sendNotImplemented() {
   StaticJsonDocument<192> doc;
   doc["error"] = "not_implemented";
-  doc["message"] = "ESP-12E provides Wi-Fi and discovery only. Run BitVoid application services on the PC.";
+  doc["message"] = "The gateway provides Wi-Fi and discovery only. Run BitVoid application services on the server.";
   sendJson(501, doc);
 }
 
@@ -193,7 +193,7 @@ void setupRoutes() {
   server.on("/api/v1/devices", HTTP_GET, sendDevices);
   server.on("/api/v1/internal/status", HTTP_GET, sendInternalStatus);
 
-  // The ESP must never impersonate the PC application server.
+  // The gateway must never impersonate the application server.
   server.on("/api/v1/pairing/request", HTTP_POST, sendNotImplemented);
   server.on("/api/v1/pairing/approve", HTTP_POST, sendNotImplemented);
   server.onNotFound(sendNotFound);
@@ -212,7 +212,7 @@ void setup() {
   delay(250);
   Serial.println();
   Serial.println(F("===================================="));
-  Serial.println(F(" BitVoid ESP-12E Gateway Test Build"));
+  Serial.println(F(" BitVoid Gateway Test Build"));
   Serial.println(F("===================================="));
 
   bootMillis = millis();
@@ -228,7 +228,7 @@ void setup() {
   }
   if (String(BITVOID_GATEWAY_ID).length() < 3 ||
       String(BITVOID_PC_SERVER_ID).length() < 3) {
-    fatalError(F("Set valid gateway and PC server IDs in config.h."));
+    fatalError(F("Set valid gateway and server IDs in config.h."));
   }
   if (BITVOID_MAX_CLIENTS < 1 || BITVOID_MAX_CLIENTS > 8) {
     fatalError(F("BITVOID_MAX_CLIENTS must be between 1 and 8."));
@@ -253,7 +253,7 @@ void setup() {
   mdnsReady = MDNS.begin(gatewayHostname);
   if (mdnsReady) {
     MDNS.addService("http", "tcp", 80);
-    Serial.println(F("mDNS: esp-server.local"));
+    Serial.println(F("mDNS: bitvoid-gateway.local"));
   } else {
     Serial.println(F("WARNING: mDNS unavailable; use http://192.168.4.1"));
   }
@@ -271,8 +271,8 @@ void setup() {
   Serial.print(F("Discovery: http://")); Serial.print(WiFi.softAPIP()); Serial.println(F("/api/node"));
   Serial.print(F("Max clients: ")); Serial.println(BITVOID_MAX_CLIENTS);
   Serial.println(F("Role: Wi-Fi AP + discovery + health only"));
-  Serial.println(F("Messaging server: PC only (TCP 8787)"));
-  Serial.println(F("Connect PC and phone to this Wi-Fi for the next test."));
+  Serial.println(F("Messaging service: application server (TCP 8787)"));
+  Serial.println(F("Connect the server and phone to this Wi-Fi for the next test."));
 }
 
 void loop() {

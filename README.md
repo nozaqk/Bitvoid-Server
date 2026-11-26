@@ -1,10 +1,10 @@
-# BitVoid — ESP-12E Hardware Test Stage
+# BitVoid — Gateway Hardware Test Stage
 
-BitVoid is being developed as an offline-first local communication system. **The current repository stage is intentionally limited to the ESP-12E gateway firmware.** The PC application server is not included yet; it will be designed and added after the ESP hardware and Wi-Fi behavior have been tested.
+BitVoid is being developed as an offline-first local communication system. **The current repository stage is focused on gateway firmware and local network testing.** The application server will be added after gateway connectivity and Wi-Fi behavior have been tested.
 
 ## Current test target
 
-- ESP-12E / ESP8266 creates a WPA2 Wi-Fi access point.
+- The gateway creates a WPA2 Wi-Fi access point (current hardware target: ESP-12E / ESP8266).
 - Default SSID: `BitVoid_Local`
 - Gateway IP: `192.168.4.1`
 - HTTP API: port `80`
@@ -50,7 +50,7 @@ Do not connect 5 V UART logic directly to ESP8266 RX. A weak USB-to-serial 3.3 V
 8. Select **Generic ESP8266 Module** (or the exact ESP-12E board profile), select the correct COM port, and upload.
 9. Open Serial Monitor at **115200 baud**, reset the board, and look for `GATEWAY READY`.
 
-The PC server identity and trust secret fields are reserved for a later server integration. They do not mean a PC server is currently included. Keep the IDs and secret stable and private for the later integration.
+The server identity and trust secret fields are reserved for later server integration. Keep the IDs and secret stable and private.
 
 ## First hardware test
 
