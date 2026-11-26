@@ -1,6 +1,6 @@
-# BitVoid ESP-12E — Standalone Hardware Test
+# BitVoid Gateway — Standalone Hardware Test
 
-The ESP-12E is currently being tested as a **standalone local Wi-Fi access point and discovery/health gateway**. The PC application server is deliberately not in this repository stage; we will build it after the ESP tests pass.
+The gateway is currently being tested as a **standalone local Wi-Fi access point and discovery/health service**. The application server will be added after gateway connectivity tests pass.
 
 This firmware does not provide chat, pairing, channels, Live Classes, a dashboard, a captive portal, or internet routing. It provides the Wi-Fi network and basic machine-readable gateway endpoints only.
 
@@ -24,7 +24,7 @@ For a typical bare ESP-12E upload, connect adapter TX to ESP RX, adapter RX to E
 5. Open `BitVoidESP12E/BitVoidESP12E.ino`.
 6. Copy `BitVoidESP12E/config.example.h` to `BitVoidESP12E/config.h` in the same folder.
 7. Set a unique WPA2 password (8–63 characters) and a random trust secret of at least 32 characters. Keep `config.h` private; Git ignores it.
-8. The PC server ID and trust secret are reserved for future server integration. Keep their values private and stable; no PC server is included at this stage.
+8. The server ID and trust secret are reserved for future server integration. Keep their values private and stable; the application server is not included at this stage.
 9. Select **Generic ESP8266 Module** (or the matching ESP-12E profile), select the correct COM port, and upload.
 10. Open Serial Monitor at **115200 baud**, press RESET, and confirm `GATEWAY READY`.
 
@@ -32,7 +32,7 @@ The example config intentionally contains placeholders and the sketch will refus
 
 ## Standalone test
 
-Join the configured `BitVoid_Local` Wi-Fi from a phone or PC. The default gateway is `192.168.4.1`.
+Join the configured `BitVoid_Local` Wi-Fi from a phone or computer. The default gateway is `192.168.4.1`.
 
 | Test | URL |
 |---|---|
@@ -48,17 +48,17 @@ Expected behavior:
 - Health reports `ok: true` and `status: ready`.
 - The gateway reports Wi-Fi AP, discovery, and health as available.
 - Messaging is explicitly reported unavailable on the ESP.
-- The station count increases when another phone/PC joins and decreases when it disconnects.
+- The station count increases when another device joins and decreases when it disconnects.
 - The SSID remains available and health requests continue responding during a sustained test.
 
-The protected `/api/v1/internal/status` endpoint should return HTTP 401 in a normal browser request. It is reserved for the future PC server and requires the configured identity/trust headers.
+The protected `/api/v1/internal/status` endpoint should return HTTP 401 in a normal browser request. It is reserved for the application server and requires the configured identity/trust headers.
 
 ## Network values
 
 - SSID: `BitVoid_Local` (configurable)
 - Gateway IP: `192.168.4.1`
 - HTTP port: `80`
-- mDNS hostname: `esp-server.local` (use the IP if mDNS is unavailable)
+- mDNS hostname: `bitvoid-gateway.local` (use the IP if mDNS is unavailable)
 - Maximum stations: `4` by default
 
 The ESP does not route internet traffic. A successful Wi-Fi and health test does not mean BitVoid messaging is implemented yet.
