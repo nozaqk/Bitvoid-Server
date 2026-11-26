@@ -3,6 +3,7 @@ import Fastify from "fastify";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import websocket from "@fastify/websocket";
+import Bonjour from "bonjour-service";
 import Database from "better-sqlite3";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -37,6 +38,7 @@ function setting(key, value) {
   return value;
 }
 const serverId = setting("server_id", "srv_" + randomUUID().replaceAll("-", ""));
+const bonjour = new Bonjour();
 const timestamp = () => new Date().toISOString();
 const hashToken = token => createHash("sha256").update(token).digest("hex");
 const validUsername = value => typeof value === "string" && /^[a-zA-Z0-9._-]{2,24}$/.test(value);
@@ -84,10 +86,7 @@ async function authenticate(request, reply) {
   }
 }
 
-app.get("/api/v1/health", async (request, reply) => ({
-  data: { ok: true, status: "ready", apiVersion: VERSION, serverId },
-  meta: { requestId: reply.request.id, serverTime: timestamp() }
-}));
+app.get("/api/v1/health", async () => ({ ok: true, status: "ready", apiVersion: VERSION, serverId }));
 app.get("/api/v1/server/info", async (request, reply) => ({
   data: {
     serverId, displayName: NAME, apiVersion: VERSION, eventProtocolVersion: 1,
@@ -179,11 +178,12 @@ app.setErrorHandler((err, request, reply) => {
     err.statusCode >= 400 ? "request_error" : "internal_error",
     err.statusCode >= 400 ? err.message : "The Server could not complete the request.");
 });
-app.addHook("onClose", async () => db.close());
+app.addHook("onClose", async () => { bonjour.destroy(); db.close(); });
 
 try {
   await app.listen({ host: HOST, port: PORT });
-  app.log.info("BitVoid Server listening on " + HOST + ":" + PORT);
+  bonjour.publish({ name: "BitVoid Server", type: "http", port: PORT, txt: { serverId, api: "v1" } });
+  app.log.info("BitVoid Server listening on " + HOST + ":" + PORT + " with mDNS discovery");
 } catch (err) {
   app.log.error(err);
   process.exit(1);
