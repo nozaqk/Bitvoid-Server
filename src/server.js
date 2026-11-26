@@ -3,7 +3,7 @@ import Fastify from "fastify";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import websocket from "@fastify/websocket";
-import Bonjour from "bonjour-service";
+import { Bonjour } from "bonjour-service";
 import Database from "better-sqlite3";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -42,7 +42,7 @@ const bonjour = new Bonjour();
 const timestamp = () => new Date().toISOString();
 const hashToken = token => createHash("sha256").update(token).digest("hex");
 const validUsername = value => typeof value === "string" && /^[a-zA-Z0-9._-]{2,24}$/.test(value);
-const validPassword = value => typeof value === "string" && value.length >= 10 && value.length <= 128;
+const validPassword = value => typeof value === "string" && value.length >= 10 && value.length <= 128 && Buffer.byteLength(value, "utf8") <= 72;
 const app = Fastify({
   logger: true,
   bodyLimit: 65536,
