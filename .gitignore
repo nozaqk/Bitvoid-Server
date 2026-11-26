@@ -1,8 +1,10 @@
 node_modules/
-pc-server/node_modules/
-pc-server/.state/
-pc-server/.env
-esp12e-firmware/BitVoidESP12E/config.h
-*.log
+.env
+data/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+certs/
+*.pem
+*.key
 .DS_Store
-cloud-server/.env

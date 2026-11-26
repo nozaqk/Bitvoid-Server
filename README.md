@@ -1,82 +1,83 @@
-# BitVoid — Gateway Hardware Test Stage
+# BitVoid Server
 
-BitVoid is an offline-first local communication system. This repository currently contains the **Gateway firmware**. The separate application Server is planned after the Gateway's Wi-Fi, discovery, and stability tests pass.
+BitVoid Server is a cross-platform application service that runs as software on Windows, Linux, or macOS. It does not require ESP8266, ESP-12E, Arduino IDE, or dedicated Gateway hardware.
+
+The Android BitVoid app connects directly to this Server over the same private Wi-Fi network or LAN. The computer can be a desktop or laptop. The Server does not create a Wi-Fi network; use an existing router, hotspot, or LAN. Internet access is not required.
 
 ## Architecture
 
-- **Android app:** only user-facing client.
-- **Gateway:** provides local Wi-Fi, health, and discovery only.
-- **Application Server:** a separate headless service that will provide pairing, authentication, messaging, channels, Live Classes, persistence, and synchronization.
-- The Android app will connect directly to the Server over the local Wi-Fi network. The Gateway is not an application API proxy.
+- Android app: only user-facing client.
+- BitVoid Server: account authentication, local data, and authenticated real-time connection.
+- Network: existing private Wi-Fi/LAN.
+- Database: local SQLite file on the host computer.
+- ESP8266/Gateway firmware: removed from this repository; not required.
 
-## Current hardware test target
+## Requirements
 
-- Hardware: ESP-12E / ESP8266.
-- Default SSID: `BitVoid_Local`.
-- Gateway IP: `192.168.4.1`.
-- Gateway HTTP API: port `80`.
-- Gateway mDNS hostname: `bitvoid-gateway.local`.
-- Default maximum stations: `4`.
-- No internet connection is required.
-- The Gateway does not provide chat, pairing, channels, Live Classes, or application persistence.
+- Node.js 20 or newer and npm.
+- Windows 10/11, current Linux, or macOS.
+- Phone and Server computer on the same private network.
 
-## Firmware structure
+## Windows quick start
 
-```text
-Bitvoid-Server/
-├── docs/
-│   └── SERVER-API-V1.md
-└── esp12e-firmware/
-    └── BitVoidESP12E/
-        ├── BitVoidESP12E.ino
-        └── config.example.h
-```
+1. Install Node.js 20 LTS or newer from https://nodejs.org/.
+2. Download and extract this repository ZIP.
+3. Open PowerShell in the Bitvoid-Server folder.
+4. Run: npm install
+5. Copy .env.example to .env.
+6. Generate a secret: in PowerShell run $secret = [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48)).
+7. Put that generated value in BITVOID_TOKEN_SECRET inside .env. Keep .env private.
+8. Run: npm start
 
-## Arduino IDE setup
+The Server listens on port 8787 and creates data/bitvoid.sqlite automatically.
 
-1. Install Arduino IDE 2.x.
-2. Add Boards Manager URL: `https://arduino.esp8266.com/stable/package_esp8266com_index.json`.
-3. Install **esp8266 by ESP8266 Community**.
-4. Install **ArduinoJson 6.x**.
-5. Open `esp12e-firmware/BitVoidESP12E/BitVoidESP12E.ino`.
-6. Copy `config.example.h` to `config.h` beside the sketch.
-7. Set a private WPA2 password (8–63 characters) and unique random 32+ character trust secret. Keep `config.h` private; it is ignored by Git.
-8. Select the matching ESP-12E / Generic ESP8266 Module board and correct COM port.
-9. Upload and open Serial Monitor at 115200 baud. Look for `GATEWAY READY`.
+## Linux / macOS
 
-## Gateway tests
+Copy .env.example to .env, set BITVOID_TOKEN_SECRET to the output of openssl rand -base64 48, then run npm install and npm start.
 
-Join `BitVoid_Local` and test:
+## Connect your phone
 
-| Test | URL | Expected result |
-|---|---|---|
-| Root identity | `http://192.168.4.1/` | Gateway identity JSON |
-| Health | `http://192.168.4.1/api/v1/health` | `ok: true`, `status: ready` |
-| Gateway metadata | `http://192.168.4.1/api/v1/gateway/info` | Gateway ID, IP, capabilities |
-| Services | `http://192.168.4.1/api/v1/services` | Wi-Fi, discovery, health available; messaging unavailable |
-| Connected stations | `http://192.168.4.1/api/v1/devices` | Current station count |
-| Discovery identity | `http://192.168.4.1/api/node` | Gateway node identity |
+1. Connect the phone and host computer to the same private Wi-Fi/LAN.
+2. Find the computer's LAN IPv4 address: ipconfig on Windows, ip addr on Linux, or ipconfig getifaddr en0 on macOS.
+3. Allow inbound TCP port 8787 through the computer firewall on the private network only.
+4. Test from the phone: http://HOST-LAN-IP:8787/api/v1/health
+5. Configure the Android app to use http://HOST-LAN-IP:8787 until automatic LAN discovery is integrated.
 
-The protected `/api/v1/internal/status` endpoint must reject requests without the configured Server identity and trust headers. Those headers are only for Server-to-Gateway management/telemetry; they are not app-user authentication.
+The Server binds to 0.0.0.0 by default. Do not assume 192.168.4.1 is the Server; use the computer's actual LAN address.
 
-## Future application Server contract
+## Implemented API
 
-The shared REST/WebSocket API contract is in [docs/SERVER-API-V1.md](docs/SERVER-API-V1.md). Planned defaults:
+- GET /api/v1/health — health/readiness.
+- GET /api/v1/server/info — stable Server identity.
+- POST /api/v1/account/register — create account, session, one-time recovery key.
+- POST /api/v1/account/login — authenticate.
+- POST /api/v1/account/recover — reset password using recovery key.
+- GET /api/v1/me — authenticated account.
+- POST /api/v1/auth/revoke — revoke current session.
+- WS /api/v1/events — authenticated WebSocket handshake and heartbeat.
 
-- Server TCP port: `8787`.
-- Preferred hostname: `bitvoid-server.local`.
-- DNS-SD service: `_bitvoid-server._tcp.local.`.
-- REST root: `/api/v1`.
-- WebSocket: `/api/v1/events`.
-
-The Server will be a separate device connected to the Gateway Wi-Fi. It will have its own DHCP address. The app must discover and verify that Server address and connect directly to it. Do not assume the Server is at `192.168.4.1`.
+The account endpoints match the Android app's current BitVoidAccountAuth request/response contract. Usernames are 2-24 characters and passwords are 10-128 characters. Passwords and recovery keys are bcrypt-hashed. The recovery key is returned only at registration; save it securely.
 
 ## Security
 
-- Use a unique WPA2 password and private 32+ character Gateway trust secret.
-- Never commit `config.h`.
-- The Gateway test API uses local HTTP and is not encrypted TLS transport.
-- Do not expose the Gateway directly to the public internet.
-- The app authenticates to the application Server with device tokens; the Gateway trust secret is never an app credential.
+- Keep the computer on a trusted private network. Do not port-forward port 8787 to the public internet.
+- Use a unique BITVOID_TOKEN_SECRET and keep .env private.
+- Account passwords and recovery keys are bcrypt-hashed. Session tokens are revocable and stored hashed in SQLite.
+- Account endpoints are rate-limited.
+- Default HTTP/WS traffic is not encrypted and is intended only for a trusted private LAN. Configure TLS before using an untrusted network. The Android app must separately validate/trust the TLS certificate before using HTTPS/WSS.
+- TLS protects transport between the app and Server; it is not end-to-end encryption between users.
+- Hidden SSIDs and MAC allowlists are not substitutes for WPA2/WPA3 and application authentication.
 
-No GitHub Actions workflows are used.
+## Configuration
+
+- BITVOID_HOST: default 0.0.0.0.
+- BITVOID_PORT: default 8787.
+- BITVOID_DISPLAY_NAME: default BitVoid Local Server.
+- BITVOID_DATABASE_PATH: default ./data/bitvoid.sqlite.
+- BITVOID_TOKEN_SECRET: required random secret, at least 32 characters.
+- BITVOID_TOKEN_TTL: default 7d.
+- BITVOID_TLS_CERT and BITVOID_TLS_KEY: optional TLS certificate/key paths.
+
+## Current scope
+
+This is the initial portable Server foundation. Conversations, messages, channels, Live Classes, attachment transfer, durable offline synchronization, and full event fan-out are not implemented yet and must not be presented as available features.
