@@ -253,7 +253,7 @@ void setup() {
   mdnsReady = MDNS.begin(gatewayHostname);
   if (mdnsReady) {
     MDNS.addService("http", "tcp", 80);
-    Serial.println(F("mDNS: esp-server.local"));
+    Serial.println(F("mDNS: bitvoid-gateway.local"));
   } else {
     Serial.println(F("WARNING: mDNS unavailable; use http://192.168.4.1"));
   }
