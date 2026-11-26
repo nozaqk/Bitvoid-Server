@@ -110,7 +110,7 @@ app.post("/api/v1/account/register", { config: { rateLimit: { max: 5, timeWindow
   const masterPassphrase = randomBytes(22).toString("hex");
   try {
     db.prepare("INSERT INTO accounts(id, username, password_hash, recovery_hash, created_at) VALUES (?, ?, ?, ?, ?)")
-      .run(id, username, await bcrypt.hash(body.password, 12), await bcrypt.hash(masterPassphrase, 12), timestamp());
+      .run(id, username, await bcrypt.hash(body.password, 12), hashToken(masterPassphrase), timestamp());
   } catch (e) {
     if (e.code === "SQLITE_CONSTRAINT_UNIQUE") return error(reply, 409, "username_taken", "That username is already registered.");
     throw e;
@@ -135,11 +135,7 @@ app.post("/api/v1/account/recover", { config: { rateLimit: { max: 5, timeWindow:
   if (typeof body.masterPassphrase !== "string" || !/^[0-9a-fA-F]{44}$/.test(body.masterPassphrase) || !validPassword(body.newPassword)) {
     return error(reply, 400, "validation_error", "A valid 44-character recovery key and a 10-128 character new password are required.");
   }
-  const rows = db.prepare("SELECT id, username, recovery_hash FROM accounts").all();
-  let match = null;
-  for (const row of rows) {
-    if (await bcrypt.compare(body.masterPassphrase, row.recovery_hash)) { match = row; break; }
-  }
+  const match = db.prepare("SELECT id, username FROM accounts WHERE recovery_hash=?").get(hashToken(body.masterPassphrase));
   if (!match) return error(reply, 401, "invalid_recovery_key", "The recovery key is not valid.");
   db.prepare("UPDATE accounts SET password_hash=? WHERE id=?").run(await bcrypt.hash(body.newPassword, 12), match.id);
   db.prepare("UPDATE sessions SET revoked_at=? WHERE account_id=? AND revoked_at IS NULL").run(timestamp(), match.id);
