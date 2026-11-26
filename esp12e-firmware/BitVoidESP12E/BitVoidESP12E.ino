@@ -258,8 +258,8 @@ void setup() {
     Serial.println(F("WARNING: mDNS unavailable; use http://192.168.4.1"));
   }
 
-  const char* trustedHeaders[] = {"X-BitVoid-Server-Id", "X-BitVoid-Server-Key"};
-  server.collectHeaders(trustedHeaders, 2);
+  // ESP8266WebServer 3.1.2 uses a variadic String-compatible API here.
+  server.collectHeaders("X-BitVoid-Server-Id", "X-BitVoid-Server-Key");
   setupRoutes();
   server.begin();
 
