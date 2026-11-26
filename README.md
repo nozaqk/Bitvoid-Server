@@ -1,84 +1,82 @@
 # BitVoid — Gateway Hardware Test Stage
 
-BitVoid is being developed as an offline-first local communication system. **The current repository stage is focused on gateway firmware and local network testing.** The application server will be added after gateway connectivity and Wi-Fi behavior have been tested.
+BitVoid is an offline-first local communication system. This repository currently contains the **Gateway firmware**. The separate application Server is planned after the Gateway's Wi-Fi, discovery, and stability tests pass.
 
-## Current test target
+## Architecture
 
-- The gateway creates a WPA2 Wi-Fi access point (current hardware target: ESP-12E / ESP8266).
-- Default SSID: `BitVoid_Local`
-- Gateway IP: `192.168.4.1`
-- HTTP API: port `80`
-- mDNS hostname: `esp-server.local`
-- Default maximum stations: `4`
-- Provides health, gateway metadata, service status, connected-station count, and discovery identity.
+- **Android app:** only user-facing client.
+- **Gateway:** provides local Wi-Fi, health, and discovery only.
+- **Application Server:** a separate headless service that will provide pairing, authentication, messaging, channels, Live Classes, persistence, and synchronization.
+- The Android app will connect directly to the Server over the local Wi-Fi network. The Gateway is not an application API proxy.
+
+## Current hardware test target
+
+- Hardware: ESP-12E / ESP8266.
+- Default SSID: `BitVoid_Local`.
+- Gateway IP: `192.168.4.1`.
+- Gateway HTTP API: port `80`.
+- Gateway mDNS hostname: `bitvoid-gateway.local`.
+- Default maximum stations: `4`.
 - No internet connection is required.
-- No PC application server, messaging server, Android client integration, website, dashboard, captive portal, or WebView is part of this test stage.
+- The Gateway does not provide chat, pairing, channels, Live Classes, or application persistence.
 
-The ESP is currently being tested as a standalone local Wi-Fi gateway. Do not expect chat, pairing, channels, or live classes to work yet. Those application features will be built after the gateway tests pass.
-
-## Repository structure
+## Firmware structure
 
 ```text
 Bitvoid-Server/
-├── esp12e-firmware/
-│   ├── BitVoidESP12E/
-│   │   ├── BitVoidESP12E.ino
-│   │   └── config.example.h
-│   └── README.md
-└── README.md
+├── docs/
+│   └── SERVER-API-V1.md
+└── esp12e-firmware/
+    └── BitVoidESP12E/
+        ├── BitVoidESP12E.ino
+        └── config.example.h
 ```
 
-## Hardware requirements
-
-- ESP-12E module
-- Stable regulated 3.3 V supply capable of handling Wi-Fi transmit-current peaks
-- USB-to-serial adapter with 3.3 V UART logic
-- Common ground between ESP and adapter
-
-Do not connect 5 V UART logic directly to ESP8266 RX. A weak USB-to-serial 3.3 V output may not supply enough current for Wi-Fi; use a suitable regulator.
-
-## Arduino IDE installation
+## Arduino IDE setup
 
 1. Install Arduino IDE 2.x.
-2. Add the ESP8266 Boards Manager URL:
-   `https://arduino.esp8266.com/stable/package_esp8266com_index.json`
-3. Install **esp8266 by ESP8266 Community** in Boards Manager.
-4. Install **ArduinoJson 6.x** from Library Manager.
+2. Add Boards Manager URL: `https://arduino.esp8266.com/stable/package_esp8266com_index.json`.
+3. Install **esp8266 by ESP8266 Community**.
+4. Install **ArduinoJson 6.x**.
 5. Open `esp12e-firmware/BitVoidESP12E/BitVoidESP12E.ino`.
-6. Copy `config.example.h` to `config.h` in the same sketch folder.
-7. Set a private WPA2 password of 8–63 characters and a unique random ESP trust secret of at least 32 characters. Keep `config.h` private; it is ignored by Git.
-8. Select **Generic ESP8266 Module** (or the exact ESP-12E board profile), select the correct COM port, and upload.
-9. Open Serial Monitor at **115200 baud**, reset the board, and look for `GATEWAY READY`.
+6. Copy `config.example.h` to `config.h` beside the sketch.
+7. Set a private WPA2 password (8–63 characters) and unique random 32+ character trust secret. Keep `config.h` private; it is ignored by Git.
+8. Select the matching ESP-12E / Generic ESP8266 Module board and correct COM port.
+9. Upload and open Serial Monitor at 115200 baud. Look for `GATEWAY READY`.
 
-The server identity and trust secret fields are reserved for later server integration. Keep the IDs and secret stable and private.
+## Gateway tests
 
-## First hardware test
-
-Join the ESP Wi-Fi from a phone or PC. Use the password configured in your private `config.h`.
+Join `BitVoid_Local` and test:
 
 | Test | URL | Expected result |
 |---|---|---|
-| Root identity | `http://192.168.4.1/` | JSON identifies BitVoid ESP gateway |
+| Root identity | `http://192.168.4.1/` | Gateway identity JSON |
 | Health | `http://192.168.4.1/api/v1/health` | `ok: true`, `status: ready` |
-| Gateway metadata | `http://192.168.4.1/api/v1/gateway/info` | ESP-12E model, IP, capabilities |
+| Gateway metadata | `http://192.168.4.1/api/v1/gateway/info` | Gateway ID, IP, capabilities |
 | Services | `http://192.168.4.1/api/v1/services` | Wi-Fi, discovery, health available; messaging unavailable |
-| Connected stations | `http://192.168.4.1/api/v1/devices` | Current connected-station count |
+| Connected stations | `http://192.168.4.1/api/v1/devices` | Current station count |
 | Discovery identity | `http://192.168.4.1/api/node` | Gateway node identity |
 
-Connect a second device and check that the station count increases. Disconnect it and check that the count decreases. Repeat the health request over several minutes to check stability.
+The protected `/api/v1/internal/status` endpoint must reject requests without the configured Server identity and trust headers. Those headers are only for Server-to-Gateway management/telemetry; they are not app-user authentication.
 
-The `/api/v1/internal/status` endpoint is protected and should return HTTP 401 when opened without the expected PC identity and trust headers. This endpoint is reserved for the future local server integration.
+## Future application Server contract
 
-## Scope after ESP testing
+The shared REST/WebSocket API contract is in [docs/SERVER-API-V1.md](docs/SERVER-API-V1.md). Planned defaults:
 
-Only after the ESP-12E access point, endpoints, station counting, and stability tests pass will we design and add the PC application server. That future server will provide application data persistence, pairing, messaging, channels, Live Classes, and the REST/WebSocket API used by the Android app. The ESP will remain the Wi-Fi gateway, not the application server.
+- Server TCP port: `8787`.
+- Preferred hostname: `bitvoid-server.local`.
+- DNS-SD service: `_bitvoid-server._tcp.local.`.
+- REST root: `/api/v1`.
+- WebSocket: `/api/v1/events`.
+
+The Server will be a separate device connected to the Gateway Wi-Fi. It will have its own DHCP address. The app must discover and verify that Server address and connect directly to it. Do not assume the Server is at `192.168.4.1`.
 
 ## Security
 
-- Use a unique WPA2 password.
-- Use a unique random 32+ character ESP trust secret.
-- Never commit or share `config.h`.
-- This test gateway uses local HTTP; it is not encrypted TLS transport.
-- Do not expose the gateway directly to the public internet.
+- Use a unique WPA2 password and private 32+ character Gateway trust secret.
+- Never commit `config.h`.
+- The Gateway test API uses local HTTP and is not encrypted TLS transport.
+- Do not expose the Gateway directly to the public internet.
+- The app authenticates to the application Server with device tokens; the Gateway trust secret is never an app credential.
 
 No GitHub Actions workflows are used.
