@@ -26,6 +26,8 @@ export function createCloudSync(db, options = {}) {
   if(!inboxColumns.some(column=>column.name==="applied_at")) db.exec("ALTER TABLE sync_inbox ADD COLUMN applied_at TEXT");
 
   function enqueue(entityType, entityId, payload, revision = 1) {
+    // Local-only mode must not build an ever-growing outbox when cloud sync is disabled.
+    if (!state.configured) return null;
     const eventId = randomUUID();
     db.prepare("INSERT INTO sync_outbox(event_id,entity_type,entity_id,revision,payload,created_at) VALUES(?,?,?,?,?,?)")
       .run(eventId,entityType,String(entityId),Math.max(1,Number(revision)||1),JSON.stringify(payload),new Date().toISOString());
