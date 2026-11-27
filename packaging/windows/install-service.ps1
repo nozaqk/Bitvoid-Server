@@ -12,6 +12,17 @@ $ServiceName = "BitVoidServer"
 $EnvFile = Join-Path $DataDir "server.env"
 $WrapperExe = Join-Path $InstallDir "BitVoidServer.exe"
 
+function Invoke-WinSw {
+    param([Parameter(Mandatory = $true)][string[]]$Arguments)
+    if (-not (Test-Path -LiteralPath $WrapperExe -PathType Leaf)) {
+        throw "The BitVoid Server service wrapper is missing: $WrapperExe"
+    }
+    & $WrapperExe @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "BitVoid Server service wrapper command failed: $($Arguments -join ' ') (exit $LASTEXITCODE)"
+    }
+}
+
 function Ensure-DataAndConfig {
     New-Item -ItemType Directory -Path $DataDir -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $DataDir "service-logs") -Force | Out-Null
@@ -52,9 +63,14 @@ function Remove-ExistingService {
         Stop-Service -Name $ServiceName -Force -ErrorAction Stop
         (Get-Service -Name $ServiceName).WaitForStatus("Stopped", [TimeSpan]::FromSeconds(30))
     }
-    & sc.exe delete $ServiceName | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        throw "Windows Service Control Manager could not remove the existing BitVoid Server service."
+    if (Test-Path -LiteralPath $WrapperExe -PathType Leaf) {
+        try {
+            Invoke-WinSw -Arguments @("uninstall")
+        } catch {
+            & sc.exe delete $ServiceName | Out-Null
+        }
+    } else {
+        & sc.exe delete $ServiceName | Out-Null
     }
     $remaining = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
     for ($i = 0; $i -lt 20; $i++) {
@@ -78,15 +94,7 @@ switch ($Action) {
         }
 
         Remove-ExistingService
-        $serviceBinPath = '"' + $WrapperExe + '"'
-        & sc.exe create $ServiceName "binPath= $serviceBinPath" "start= auto" "DisplayName= BitVoid Server" | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            throw "Windows Service Control Manager could not register BitVoid Server."
-        }
-        & sc.exe description $ServiceName "BitVoid Server background service" | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            throw "Windows Service Control Manager could not set the BitVoid Server service description."
-        }
+        Invoke-WinSw -Arguments @("install")
         Start-Service -Name $ServiceName
         (Get-Service -Name $ServiceName).WaitForStatus("Running", [TimeSpan]::FromSeconds(30))
 
