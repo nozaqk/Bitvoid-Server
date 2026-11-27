@@ -37,7 +37,7 @@ BITVOID_DISPLAY_NAME=BitVoid Local Server
 BITVOID_DEPLOYMENT_MODE=self-hosted
 BITVOID_NETWORK_MODE=lan
 ENVEOF
-  chmod 600 "$ENV_FILE"
 fi
 
+chmod 600 "$ENV_FILE"
 exec "$NODE_BIN" --env-file="$ENV_FILE" "$SERVER_ENTRY"
