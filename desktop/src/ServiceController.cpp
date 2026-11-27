@@ -51,8 +51,17 @@ QString ServiceController::queryServiceStatus() const {
     }
     return QStringLiteral("not-installed");
 #elif defined(Q_OS_MACOS)
-    if (runOsCommand(QStringLiteral("launchctl"), {QStringLiteral("list"), QStringLiteral("com.bitvoid.server")}, &out)) {
-        return out.contains(QStringLiteral("PID")) ? QStringLiteral("running") : QStringLiteral("stopped");
+    if (runOsCommand(QStringLiteral("launchctl"), {QStringLiteral("list")}, &out)) {
+        const QStringList lines = out.split(QLatin1Char('\\n'));
+        for (const QString &line : lines) {
+            if (!line.trimmed().endsWith(QStringLiteral("com.bitvoid.server"))) continue;
+            const QStringList columns = line.simplified().split(QLatin1Char(' '), Qt::SkipEmptyParts);
+            if (columns.size() >= 3) {
+                return columns.first() == QStringLiteral("-")
+                    ? QStringLiteral("stopped")
+                    : QStringLiteral("running");
+            }
+        }
     }
     return QStringLiteral("not-installed");
 #else
