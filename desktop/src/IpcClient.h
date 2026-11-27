@@ -26,7 +26,7 @@ public:
     void sendRequest(const QString &method,
                      const QJsonObject &params,
                      ResultCallback callback,
-                     int timeoutMs = 8000);
+                     int timeoutMs = 30000);
 
     static QString resolveDefaultIpcPath();
 

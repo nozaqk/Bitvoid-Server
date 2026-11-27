@@ -5,10 +5,11 @@ This directory contains the **native cross-platform desktop administration appli
 ## Architecture Rules Enforced
 
 - **No browser, no WebView, no Electron, no web admin server:** renders natively via Qt 6 Quick / Controls.
-- **Protected local IPC only:** connects to the BitVoid Server background service over `QLocalSocket` (Unix domain socket chmod `0600` on Linux/macOS; Windows named pipe `\\.\pipe\bitvoid-server-admin` on Windows) using newline-delimited JSON-RPC 2.0.
+- **Protected local IPC only:** connects to the BitVoid Server background service over `QLocalSocket` using newline-delimited JSON-RPC 2.0. Development and macOS use an owner-only Unix socket (`0600`). The Debian package uses a dedicated `bitvoid-admin` group (`0660` socket, `0640` first-run enrollment file); the installer adds the invoking user when available. Windows uses the `\\\\.\\pipe\\bitvoid-server-admin` named pipe.
 - **Independent of background service:** if the background service fails or stops, the desktop app stays responsive, reads disk logs directly via `ServiceController`, and provides Start/Restart/Stop actions via Windows SCM (`sc.exe`), Linux `systemd` (`systemctl`), or macOS `launchd` (`launchctl`).
 - **Closing the dashboard does not stop the Server:** explicit Stop Server confirmation is required.
-- **No default administrator passwords:** first-run setup requires the single-use local enrollment code written by the Server with owner-only permissions.
+- **Windows privilege boundary:** the native dashboard requests Administrator elevation so it can securely manage the LocalSystem service and read its protected one-time enrollment file. Linux uses the restricted `bitvoid-admin` group; macOS runs the service and dashboard as the same signed-in user.
+- **No default administrator passwords:** first-run setup requires the single-use local enrollment code. It is owner-only by default; packaged Linux installs grant read access only to the dedicated `bitvoid-admin` group.
 
 ## Build Requirements
 

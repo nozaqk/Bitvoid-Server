@@ -21,8 +21,8 @@
 
 5. **Administration Isolation & Zero Default Passwords (`src/services/adminAuthService.js`, `src/ipc/adminIpcServer.js`):**
    - No `/admin` or browser dashboard routes exist on the HTTP server.
-   - Administration runs exclusively over a local Unix domain socket (`chmod 0600`) or Windows Named Pipe.
-   - Administrator accounts are separate from Node accounts, use an HKDF-derived distinct JWT signing subkey (`adminSigningKey`), and initialize via a single-use random local enrollment code (`first-run-enrollment.txt`, `0600`, deleted automatically on setup).
+   - Administration runs exclusively over a local Unix domain socket or Windows Named Pipe. Unix sockets and enrollment files default to owner-only (`0600`); the Debian package explicitly grants only the dedicated `bitvoid-admin` group access (`0660` socket and `0640` enrollment file), without granting that group access to the SQLite database or Server environment secret.
+   - Administrator accounts are separate from Node accounts, use an HKDF-derived distinct JWT signing subkey (`adminSigningKey`), and initialize via a single-use random local enrollment code that is deleted automatically on setup.
 
 6. **Encrypted Secrets, Encrypted Backups & Redacted Logs:**
    - Sensitive Server config values are encrypted at rest with AES-256-GCM + per-key AAD (`src/security/configStore.js`).

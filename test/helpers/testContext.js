@@ -18,7 +18,9 @@ export async function createTestServer(extraOverrides = {}) {
     BITVOID_MEDIA_DIR: join(workDir, "media"),
     BITVOID_BACKUP_DIR: join(workDir, "backups"),
     BITVOID_LOG_DIR: join(workDir, "logs"),
-    BITVOID_IPC_PATH: join(workDir, "bitvoid-admin.sock"),
+    BITVOID_IPC_PATH: process.platform === "win32"
+      ? `\\\\.\\pipe\\bitvoid-test-${process.pid}-${randomBytes(8).toString("hex")}`
+      : join(workDir, "bitvoid-admin.sock"),
     BITVOID_IPC_ENABLED: "false",
     BITVOID_MDNS_ENABLED: "false",
     BITVOID_LOGGER: "false",

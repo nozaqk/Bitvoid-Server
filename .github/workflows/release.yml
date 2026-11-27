@@ -16,7 +16,7 @@ permissions:
 
 env:
   NODE_VERSION: "22.22.3"
-  QT_VERSION: "6.7.3"
+  QT_VERSION: "6.9.3"
 
 jobs:
   verify:
@@ -127,7 +127,7 @@ jobs:
   build-windows:
     name: Package Windows (.exe Installer)
     needs: verify
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
 
@@ -158,8 +158,9 @@ jobs:
           Copy-Item desktop\build\Release\bitvoid-server-desktop.exe dist\stage-windows\desktop\
           Copy-Item (Get-Command node).Source dist\stage-windows\runtime\node.exe
           Copy-Item packaging\windows\install-service.ps1 dist\stage-windows\packaging\windows\
+          Copy-Item packaging\windows\WinSW-LICENSE.txt dist\stage-windows\WinSW-LICENSE.txt
           # Pin the stable WinSW release and verify its GitHub-published SHA-256 digest before bundling.
-          $release = Invoke-RestMethod -Headers @{ Accept = "application/vnd.github+json"; "X-GitHub-Api-Version" = "2022-11-28" } -Uri "https://api.github.com/repos/winsw/winsw/releases/tags/v.2.14.1"
+          $release = Invoke-RestMethod -Headers @{ Accept = "application/vnd.github+json"; "X-GitHub-Api-Version" = "2022-11-28" } -Uri "https://api.github.com/repos/winsw/winsw/releases/tags/v2.14.0"
           $asset = $release.assets | Where-Object { $_.name -eq "WinSW-x64.exe" } | Select-Object -First 1
           if (-not $asset) { throw "Pinned WinSW x64 release asset was not found." }
           if ($asset.digest -notmatch "^sha256:[A-Fa-f0-9]{64}$") { throw "WinSW release asset has no valid published SHA-256 digest." }
@@ -227,6 +228,9 @@ jobs:
           mkdir -p "$RESOURCES/server" "$RESOURCES/runtime/bin"
           cp -a package.json package-lock.json src bin node_modules "$RESOURCES/server/"
           cp "$(which node)" "$RESOURCES/runtime/bin/node"
+          cp packaging/macos/com.bitvoid.server.plist "$RESOURCES/com.bitvoid.server.plist"
+          cp packaging/macos/start-server.sh "$RESOURCES/start-server.sh"
+          chmod 0755 "$RESOURCES/start-server.sh"
           macdeployqt "dist/stage-macos/BitVoid Server.app" -qmldir=desktop/qml
           chmod +x packaging/macos/build-dmg.sh
           ./packaging/macos/build-dmg.sh "${{ needs.verify.outputs.version }}" "dist/stage-macos/BitVoid Server.app" dist

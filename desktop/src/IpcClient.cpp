@@ -22,7 +22,7 @@ QString IpcClient::resolveDefaultIpcPath() {
 #ifdef Q_OS_WIN
     return QStringLiteral("\\\\.\\pipe\\bitvoid-server-admin");
 #elif defined(Q_OS_MACOS)
-    const QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    const QString dataDir = QDir::home().filePath(QStringLiteral("Library/Application Support/BitVoidServer"));
     return QDir(dataDir).filePath(QStringLiteral("bitvoid-admin.sock"));
 #else
     const QByteArray envDataDir = qgetenv("BITVOID_DATA_DIR");

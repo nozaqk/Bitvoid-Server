@@ -41,8 +41,44 @@ Name: "desktopicon"; Description: "Create a desktop shortcut for BitVoid Server 
 Name: "installservice"; Description: "Install and start BitVoid Server background Windows Service"; GroupDescription: "Background service:"; Flags: checkedonce
 
 [Run]
-Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\packaging\windows\install-service.ps1"" -Action install -InstallDir ""{app}"""; StatusMsg: "Configuring BitVoid Server background service..."; Flags: runhidden waituntilterminated; Tasks: installservice
 Filename: "{app}\desktop\bitvoid-server-desktop.exe"; Description: "Launch BitVoid Server Dashboard"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\packaging\windows\install-service.ps1"" -Action uninstall -InstallDir ""{app}"""; Flags: runhidden waituntilterminated
+
+[Code]
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ResultCode: Integer;
+  ServiceScript: string;
+  PowerShellParams: string;
+begin
+  if CurStep = ssInstall then
+  begin
+    { Stop the previous service before Inno Setup replaces the wrapper executable. }
+    PowerShellParams :=
+      '-NoProfile -ExecutionPolicy Bypass -Command "$s=Get-Service -Name BitVoidServer -ErrorAction SilentlyContinue; if($s -and $s.Status -ne ''Stopped''){ Stop-Service -InputObject $s -Force; $s.WaitForStatus(''Stopped'', [TimeSpan]::FromSeconds(30)) }"';
+    if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+      PowerShellParams, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+      RaiseException('Could not start PowerShell to stop the previous BitVoid Server service.');
+    if ResultCode <> 0 then
+      RaiseException('Could not stop the previous BitVoid Server service before upgrading.');
+  end;
+
+  if CurStep = ssPostInstall then
+  begin
+    ServiceScript := ExpandConstant('{app}\packaging\windows\install-service.ps1');
+    if WizardIsTaskSelected('installservice') then
+      PowerShellParams := '-NoProfile -ExecutionPolicy Bypass -File "' + ServiceScript +
+        '" -Action install -InstallDir "' + ExpandConstant('{app}') + '"'
+    else
+      PowerShellParams := '-NoProfile -ExecutionPolicy Bypass -File "' + ServiceScript +
+        '" -Action uninstall -InstallDir "' + ExpandConstant('{app}') + '"';
+
+    if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+      PowerShellParams, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+      RaiseException('Could not start PowerShell to configure the BitVoid Server service.');
+    if ResultCode <> 0 then
+      RaiseException('BitVoid Server service configuration failed. Review the installer log and try again.');
+  end;
+end;

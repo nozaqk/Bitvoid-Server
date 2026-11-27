@@ -16,7 +16,7 @@ const ADMIN_MIN_PASSWORD_LEN = 12;
  * - Completely separate from Node (`accounts`) identities.
  * - Never ships a hardcoded or default administrator password.
  * - On first run, generates a single-use random enrollment code written with owner-only
- *   permissions (0600) to `${dataDir}/first-run-enrollment.txt`.
+ *   permissions (0600 by default; optional 0640 for an explicitly configured admin group) to `${dataDir}/first-run-enrollment.txt`.
  */
 export class AdminAuthService {
   constructor({ db, config, passwordHasher, tokenManager, auditService = null }) {
@@ -82,10 +82,11 @@ export class AdminAuthService {
       ""
     ].join("\n");
 
-    writeFileSync(this.enrollmentFilePath, fileBody, { encoding: "utf8", mode: 0o600 });
+    const enrollmentFileMode = this.config.enrollmentFileMode ?? 0o600;
+    writeFileSync(this.enrollmentFilePath, fileBody, { encoding: "utf8", mode: enrollmentFileMode });
     if (process.platform !== "win32") {
       try {
-        chmodSync(this.enrollmentFilePath, 0o600);
+        chmodSync(this.enrollmentFilePath, enrollmentFileMode);
       } catch {
         // best effort
       }

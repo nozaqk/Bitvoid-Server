@@ -7,11 +7,14 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=bitvoid
-Group=bitvoid
+Group=bitvoid-admin
+SupplementaryGroups=bitvoid
 WorkingDirectory=/opt/bitvoid-server/server
 EnvironmentFile=/etc/bitvoid-server/server.env
 Environment=BITVOID_USE_OS_DATA_DIR=true
 Environment=BITVOID_DATA_DIR=/var/lib/bitvoid-server
+Environment=BITVOID_IPC_SOCKET_MODE=0660
+Environment=BITVOID_ENROLLMENT_FILE_MODE=0640
 ExecStart=/opt/bitvoid-server/runtime/bin/node /opt/bitvoid-server/server/src/server.js
 Restart=on-failure
 RestartSec=5

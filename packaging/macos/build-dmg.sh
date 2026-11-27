@@ -16,7 +16,10 @@ trap 'rm -rf "$DMG_STAGE"' EXIT
 
 cp -a "$APP_BUNDLE" "$DMG_STAGE/"
 ln -s /Applications "$DMG_STAGE/Applications"
-cp packaging/macos/com.bitvoid.server.plist "$DMG_STAGE/com.bitvoid.server.plist"
+cp packaging/macos/INSTALL.txt "$DMG_STAGE/INSTALL.txt"
+cp "packaging/macos/Install BitVoid Server.command" "$DMG_STAGE/Install BitVoid Server.command"
+cp "packaging/macos/Uninstall BitVoid Server Service.command" "$DMG_STAGE/Uninstall BitVoid Server Service.command"
+chmod 0755 "$DMG_STAGE/Install BitVoid Server.command" "$DMG_STAGE/Uninstall BitVoid Server Service.command"
 
 DMG_OUT="${OUT_DIR}/BitVoid-Server-${VERSION}-macos.dmg"
 rm -f "$DMG_OUT"

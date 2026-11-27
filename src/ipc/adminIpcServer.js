@@ -11,7 +11,7 @@ const MAX_IPC_LINE_BYTES = 1024 * 1024; // 1 MiB per JSON-RPC frame
 
 /**
  * Protected Local Administration IPC Server.
- * - Listens ONLY on a local Unix domain socket (chmod 0600) or Windows Named Pipe.
+ * - Listens ONLY on a local Unix domain socket (0600 by default; optional 0660 for an explicitly configured admin group) or Windows Named Pipe.
  * - NEVER exposed on the public LAN/Internet HTTP port.
  * - Speaks newline-delimited JSON-RPC 2.0 so both the native Qt 6 Desktop Dashboard (QLocalSocket)
  *   and the `bitvoid-admin` CLI share one exact management protocol.
@@ -54,7 +54,7 @@ export class AdminIpcServer {
     });
 
     if (!isNamedPipe && process.platform !== "win32") {
-      chmodSync(this.ipcPath, 0o600);
+      chmodSync(this.ipcPath, this.ctx.config.ipcSocketMode ?? 0o600);
     }
 
     this.listening = true;

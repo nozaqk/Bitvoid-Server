@@ -32,6 +32,24 @@ ApplicationWindow {
         visible: !backend.authenticated
     }
 
+    Dialog {
+        id: stopServerDialog
+        modal: true
+        anchors.centerIn: parent
+        width: 440
+        title: "Stop BitVoid Server?"
+        standardButtons: Dialog.Yes | Dialog.No
+
+        Label {
+            width: parent.width
+            wrapMode: Text.WordWrap
+            color: "#c9d1d9"
+            text: "Stopping the Server will disconnect connected BitVoid clients and interrupt local messaging until the background service is started again. The dashboard can remain open. Are you sure you want to stop the Server?"
+        }
+
+        onAccepted: backend.stopBackgroundService()
+    }
+
     // Authenticated Native Desktop Dashboard
     RowLayout {
         anchors.fill: parent
@@ -92,7 +110,7 @@ ApplicationWindow {
                     Button {
                         text: "Stop"
                         Layout.fillWidth: true
-                        onClicked: backend.stopBackgroundService()
+                        onClicked: stopServerDialog.open()
                     }
                 }
                 Button {

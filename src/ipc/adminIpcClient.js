@@ -9,7 +9,7 @@ export function sendAdminIpcRequest({
   method,
   params = {},
   authToken = null,
-  timeoutMs = 10000
+  timeoutMs = 30000
 }) {
   return new Promise((resolve, reject) => {
     const id = `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;

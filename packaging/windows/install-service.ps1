@@ -25,6 +25,7 @@ function Invoke-WinSw {
 
 function Ensure-DataAndConfig {
     New-Item -ItemType Directory -Path $DataDir -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $DataDir "service-logs") -Force | Out-Null
     if (-not (Test-Path -LiteralPath $EnvFile -PathType Leaf)) {
         $bytes = New-Object byte[] 48
         $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
@@ -43,7 +44,7 @@ function Ensure-DataAndConfig {
         [System.IO.File]::WriteAllText(
             $EnvFile,
             (($lines -join [Environment]::NewLine) + [Environment]::NewLine),
-            (New-Object System.Text.UTF8Encoding($false))
+            [System.Text.UTF8Encoding]::new($false)
         )
     }
 
@@ -59,14 +60,23 @@ function Remove-ExistingService {
     if (-not $existing) { return }
 
     if (Test-Path -LiteralPath $WrapperExe -PathType Leaf) {
-        & $WrapperExe stop 2>$null | Out-Null
-        & $WrapperExe uninstall 2>$null | Out-Null
-    }
-    $remaining = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
-    if ($remaining) {
-        Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+        if ($existing.Status -ne "Stopped") {
+            try { Invoke-WinSw -Arguments @("stop") } catch {
+                Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+            }
+        }
+        try {
+            Invoke-WinSw -Arguments @("uninstall")
+        } catch {
+            & sc.exe delete $ServiceName | Out-Null
+        }
+    } else {
+        if ($existing.Status -ne "Stopped") {
+            Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+        }
         & sc.exe delete $ServiceName | Out-Null
     }
+    $remaining = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
     for ($i = 0; $i -lt 20; $i++) {
         if (-not (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue)) { return }
         Start-Sleep -Milliseconds 500
@@ -98,20 +108,14 @@ switch ($Action) {
         Write-Host "Persistent data is stored at $DataDir and will be preserved by upgrades and uninstall."
     }
     "uninstall" {
-        if (Test-Path -LiteralPath $WrapperExe -PathType Leaf) {
-            & $WrapperExe stop 2>$null | Out-Null
-            & $WrapperExe uninstall 2>$null | Out-Null
-        } else {
-            $existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
-            if ($existing) {
-                Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-                & sc.exe delete $ServiceName | Out-Null
-            }
-        }
+        Remove-ExistingService
         Remove-NetFirewallRule -DisplayName "BitVoid Server (Private LAN)" -ErrorAction SilentlyContinue
         Write-Host "BitVoid Server service removed. Persistent data at $DataDir was intentionally preserved."
     }
     "start"   { Invoke-WinSw -Arguments @("start") }
     "stop"    { Invoke-WinSw -Arguments @("stop") }
-    "restart" { Invoke-WinSw -Arguments @("restart") }
+    "restart" {
+        Invoke-WinSw -Arguments @("stop")
+        Invoke-WinSw -Arguments @("start")
+    }
 }

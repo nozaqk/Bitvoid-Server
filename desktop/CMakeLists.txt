@@ -20,6 +20,14 @@ qt_add_executable(bitvoid-server-desktop
     src/DashboardBackend.cpp
 )
 
+if(WIN32)
+    enable_language(RC)
+    target_sources(bitvoid-server-desktop PRIVATE bitvoid-server-desktop.rc)
+    set_source_files_properties(bitvoid-server-desktop.rc PROPERTIES
+        COMPILE_FLAGS "/I${CMAKE_CURRENT_SOURCE_DIR}"
+    )
+endif()
+
 qt_add_qml_module(bitvoid-server-desktop
     URI BitVoidDesktop
     VERSION 1.0

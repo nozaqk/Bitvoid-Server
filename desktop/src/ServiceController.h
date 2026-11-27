@@ -30,4 +30,5 @@ public:
 
 private:
     bool runOsCommand(const QString &program, const QStringList &args, QString *out) const;
+    QString resolveWindowsServiceWrapperPath() const;
 };

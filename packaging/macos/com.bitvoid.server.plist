@@ -7,19 +7,15 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/Applications/BitVoid Server.app/Contents/Resources/runtime/bin/node</string>
-        <string>/Applications/BitVoid Server.app/Contents/Resources/server/src/server.js</string>
+        <string>/bin/bash</string>
+        <string>/Applications/BitVoid Server.app/Contents/Resources/start-server.sh</string>
     </array>
 
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>BITVOID_USE_OS_DATA_DIR</key>
-        <string>true</string>
-        <key>BITVOID_HOST</key>
-        <string>0.0.0.0</string>
-        <key>BITVOID_PORT</key>
-        <string>8787</string>
-    </dict>
+    <key>WorkingDirectory</key>
+    <string>/Applications/BitVoid Server.app/Contents/Resources/server</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
 
     <key>RunAtLoad</key>
     <true/>
