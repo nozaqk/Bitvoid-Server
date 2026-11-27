@@ -56,13 +56,25 @@ cat > "$PKG_ROOT/DEBIAN/postinst" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
+if ! getent group bitvoid >/dev/null 2>&1; then
+  groupadd --system bitvoid
+fi
+if ! getent group bitvoid-admin >/dev/null 2>&1; then
+  groupadd --system bitvoid-admin
+fi
 if ! id -u bitvoid >/dev/null 2>&1; then
-  useradd --system --home-dir /var/lib/bitvoid-server --shell /usr/sbin/nologin bitvoid
+  useradd --system --gid bitvoid --home-dir /var/lib/bitvoid-server --shell /usr/sbin/nologin bitvoid
 fi
 
 mkdir -p /var/lib/bitvoid-server /etc/bitvoid-server
-chown -R bitvoid:bitvoid /var/lib/bitvoid-server
-chmod 0700 /var/lib/bitvoid-server
+chown bitvoid:bitvoid-admin /var/lib/bitvoid-server
+chmod 0710 /var/lib/bitvoid-server
+
+# Let the interactive package installer administer the Server through its protected local socket.
+# If installed by a GUI package manager, the user can join this group manually (documented).
+if [ -n "${SUDO_USER:-}" ] && [ "${SUDO_USER}" != "root" ] && id "${SUDO_USER}" >/dev/null 2>&1; then
+  usermod -a -G bitvoid-admin "${SUDO_USER}"
+fi
 
 if [ ! -f /etc/bitvoid-server/server.env ]; then
   SECRET="$(openssl rand -base64 48 | tr -d '\n')"
@@ -76,8 +88,9 @@ BITVOID_DEPLOYMENT_MODE=self-hosted
 BITVOID_NETWORK_MODE=lan
 ENVEOF
   chown root:bitvoid /etc/bitvoid-server/server.env
-  chmod 0640 /etc/bitvoid-server/server.env
 fi
+chown root:bitvoid /etc/bitvoid-server/server.env
+chmod 0640 /etc/bitvoid-server/server.env
 
 if command -v systemctl >/dev/null 2>&1; then
   systemctl daemon-reload || true
