@@ -1,5 +1,6 @@
 #include "ServiceController.h"
 
+#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -15,7 +16,7 @@ ServiceController::ServiceController(QObject *parent)
 bool ServiceController::runOsCommand(const QString &program, const QStringList &args, QString *out) const {
     QProcess proc;
     proc.start(program, args);
-    if (!proc.waitForFinished(10000)) {
+    if (!proc.waitForFinished(30000)) {
         if (out) *out = QStringLiteral("Timed out waiting for %1").arg(program);
         return false;
     }
@@ -25,6 +26,19 @@ bool ServiceController::runOsCommand(const QString &program, const QStringList &
         *out = !stdoutStr.isEmpty() ? stdoutStr : stderrStr;
     }
     return proc.exitStatus() == QProcess::NormalExit && proc.exitCode() == 0;
+}
+
+QString ServiceController::resolveWindowsServiceWrapperPath() const {
+    const QString configured = qEnvironmentVariable(QStringLiteral("BITVOID_SERVICE_WRAPPER"));
+    if (!configured.trimmed().isEmpty()) {
+        return configured.trimmed();
+    }
+#ifdef Q_OS_WIN
+    const QString appDir = QCoreApplication::applicationDirPath();
+    return QDir::cleanPath(QDir(appDir).filePath(QStringLiteral("../BitVoidServer.exe")));
+#else
+    return QString();
+#endif
 }
 
 QString ServiceController::queryServiceStatus() const {
@@ -54,6 +68,10 @@ QString ServiceController::queryServiceStatus() const {
 
 bool ServiceController::startService(QString *outputMessage) const {
 #ifdef Q_OS_WIN
+    const QString wrapper = resolveWindowsServiceWrapperPath();
+    if (QFileInfo::exists(wrapper)) {
+        return runOsCommand(wrapper, {QStringLiteral("start")}, outputMessage);
+    }
     return runOsCommand(QStringLiteral("sc.exe"), {QStringLiteral("start"), QStringLiteral("BitVoidServer")}, outputMessage);
 #elif defined(Q_OS_MACOS)
     return runOsCommand(QStringLiteral("launchctl"), {QStringLiteral("start"), QStringLiteral("com.bitvoid.server")}, outputMessage);
@@ -64,6 +82,10 @@ bool ServiceController::startService(QString *outputMessage) const {
 
 bool ServiceController::stopService(QString *outputMessage) const {
 #ifdef Q_OS_WIN
+    const QString wrapper = resolveWindowsServiceWrapperPath();
+    if (QFileInfo::exists(wrapper)) {
+        return runOsCommand(wrapper, {QStringLiteral("stop")}, outputMessage);
+    }
     return runOsCommand(QStringLiteral("sc.exe"), {QStringLiteral("stop"), QStringLiteral("BitVoidServer")}, outputMessage);
 #elif defined(Q_OS_MACOS)
     return runOsCommand(QStringLiteral("launchctl"), {QStringLiteral("stop"), QStringLiteral("com.bitvoid.server")}, outputMessage);
@@ -74,6 +96,10 @@ bool ServiceController::stopService(QString *outputMessage) const {
 
 bool ServiceController::restartService(QString *outputMessage) const {
 #ifdef Q_OS_WIN
+    const QString wrapper = resolveWindowsServiceWrapperPath();
+    if (QFileInfo::exists(wrapper)) {
+        return runOsCommand(wrapper, {QStringLiteral("restart")}, outputMessage);
+    }
     QString stopOut;
     stopService(&stopOut);
     return startService(outputMessage);
