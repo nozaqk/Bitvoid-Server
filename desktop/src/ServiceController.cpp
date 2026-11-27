@@ -29,7 +29,7 @@ bool ServiceController::runOsCommand(const QString &program, const QStringList &
 }
 
 QString ServiceController::resolveWindowsServiceWrapperPath() const {
-    const QString configured = qEnvironmentVariable(QStringLiteral("BITVOID_SERVICE_WRAPPER"));
+    const QString configured = qEnvironmentVariable("BITVOID_SERVICE_WRAPPER");
     if (!configured.trimmed().isEmpty()) {
         return configured.trimmed();
     }
