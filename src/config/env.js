@@ -69,6 +69,15 @@ export function parseDurationMs(value, fallbackMs) {
   return amount * multipliers[unit];
 }
 
+function parseUnixMode(value, fallback, name) {
+  if (value === undefined || value === null || value === "") return fallback;
+  const raw = String(value).trim();
+  if (!/^(?:0?[0-7]{3})$/.test(raw)) {
+    throw new Error(`Invalid ${name}. Use a three-digit octal permission mode such as 0600 or 0660.`);
+  }
+  return Number.parseInt(raw, 8);
+}
+
 function parseBoolean(value, defaultValue) {
   if (value === undefined || value === null || value === "") return defaultValue;
   if (typeof value === "boolean") return value;
@@ -121,6 +130,18 @@ export function loadConfig(env = process.env, overrides = {}) {
     : join(effectiveDataDir, "logs");
 
   const ipcPath = resolveDefaultIpcPath(effectiveDataDir, merged);
+  const ipcSocketMode = parseUnixMode(merged.BITVOID_IPC_SOCKET_MODE, 0o600, "BITVOID_IPC_SOCKET_MODE");
+  if (![0o600, 0o660].includes(ipcSocketMode)) {
+    throw new Error("BITVOID_IPC_SOCKET_MODE must be 0600 or 0660.");
+  }
+  const enrollmentFileMode = parseUnixMode(
+    merged.BITVOID_ENROLLMENT_FILE_MODE,
+    0o600,
+    "BITVOID_ENROLLMENT_FILE_MODE"
+  );
+  if (![0o600, 0o640].includes(enrollmentFileMode)) {
+    throw new Error("BITVOID_ENROLLMENT_FILE_MODE must be 0600 or 0640.");
+  }
 
   const deploymentMode = String(merged.BITVOID_DEPLOYMENT_MODE || "self-hosted").trim().toLowerCase();
   if (!DEPLOYMENT_MODES.includes(deploymentMode)) {
@@ -176,6 +197,8 @@ export function loadConfig(env = process.env, overrides = {}) {
     backupDir,
     logDir,
     ipcPath,
+    ipcSocketMode,
+    enrollmentFileMode,
     ipcEnabled,
     tokenTtl,
     tokenTtlMs,
