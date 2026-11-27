@@ -64,7 +64,11 @@ function Remove-ExistingService {
         (Get-Service -Name $ServiceName).WaitForStatus("Stopped", [TimeSpan]::FromSeconds(30))
     }
     if (Test-Path -LiteralPath $WrapperExe -PathType Leaf) {
-        Invoke-WinSw -Arguments @("uninstall")
+        try {
+            Invoke-WinSw -Arguments @("uninstall")
+        } catch {
+            & sc.exe delete $ServiceName | Out-Null
+        }
     }
     $remaining = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
     if ($remaining) {
