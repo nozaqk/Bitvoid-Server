@@ -7,4 +7,8 @@ data/
 certs/
 *.pem
 *.key
+*.sock
+build/
+dist/
+desktop/build/
 .DS_Store
