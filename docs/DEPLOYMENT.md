@@ -13,6 +13,16 @@ No ESP-12E, ESP8266, ESP32, or separate microcontroller gateway is required.
 3. On first startup, the Server creates a one-time owner-only enrollment file (<dataDir>/first-run-enrollment.txt, mode 0600).
 4. Launch the **BitVoid Server Desktop Dashboard**, enter the one-time enrollment code, and create your Server Administrator account (minimum 12-character password). The enrollment file is deleted automatically.
 
+### Linux desktop administration permissions
+
+The DEB package runs the Server as the dedicated `bitvoid` service user and exposes its local administration socket only to the separate `bitvoid-admin` group. The package adds the invoking terminal user to that group when the package manager provides `SUDO_USER`. If the package was installed by a graphical package manager, add your login user manually:
+
+```bash
+sudo usermod -aG bitvoid-admin "$USER"
+```
+
+Log out and back in after changing group membership. The group can access the local IPC socket and read the one-time enrollment file, but it cannot read the SQLite database or the Server environment file/token secret.
+
 ### Windows service installation
 
 The Windows installer bundles the pinned Node.js runtime, the native desktop dashboard, and the WinSW service wrapper. The installer registers **BitVoid Server** as an automatic Windows service and starts it. The service reads its protected configuration from %ProgramData%\BitVoidServer\server.env; the SQLite database, media, logs, and backups remain in the same persistent data directory across upgrades and uninstall.
