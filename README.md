@@ -70,6 +70,7 @@ npm run test:security   # Brute-force lockout, JWT tampering, SQLi safety, cross
 ## Documentation
 
 - [Authoritative Server API v1 Contract](docs/SERVER-API-V1.md)
+- [Android Client Integration — Phase 3 Companion](docs/ANDROID-INTEGRATION.md)
 - [Deployment & OS Service Guide](docs/DEPLOYMENT.md)
 - [Native Desktop & Local IPC Architecture](docs/DESKTOP-ARCHITECTURE.md)
 - [Three-Mode Networking Guide](docs/NETWORKING.md)

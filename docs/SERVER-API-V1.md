@@ -155,6 +155,9 @@ This specification is the single authoritative API contract for BitVoid Server (
 ## 4. Android Client Migration Notes (`nozaqk/BitVoid`)
 
 When updating the Android client repository against this Server contract:
+
+> Full Phase 3 conformance plan, component migration map, error behaviour, and exit criteria: [`docs/ANDROID-INTEGRATION.md`](./ANDROID-INTEGRATION.md).
+
 1. Keep `BitVoidAccountAuth` calling `/api/v1/account/register`, `/login`, `/recover` and persist `refreshToken` + `device.id` in Keystore-backed storage alongside the access `token`.
 2. Replace legacy `/api/v1/pairing/request` and `/api/v1/users/register` calls in `BitVoidLocalApi` with the unified account/device session token and `/api/v1/devices`, `/api/v1/conversations`, `/api/v1/channels`, `/api/v1/live-classes`, `/api/v1/attachments`, and `/api/v1/sync/*`.
 3. Parse `/api/v1/me` from `data.account`, `data.node`, `data.device`, and `data.session`.
