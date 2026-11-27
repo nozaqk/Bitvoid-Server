@@ -4,7 +4,8 @@
   <name>BitVoid Server</name>
   <description>BitVoid local-first application Server background service.</description>
   <executable>%BASE%\runtime\node.exe</executable>
-  <arguments>--env-file="%ProgramData%\BitVoidServer\server.env" "%BASE%\server\src\server.js"</arguments>
+  <env name="DOTENV_CONFIG_PATH" value="%ProgramData%\BitVoidServer\server.env" />
+  <arguments>"%BASE%\server\src\server.js"</arguments>
   <workingdirectory>%BASE%\server</workingdirectory>
   <startmode>Automatic</startmode>
   <onfailure action="restart" delay="5 sec" />
