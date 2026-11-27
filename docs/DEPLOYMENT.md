@@ -10,7 +10,7 @@ No ESP-12E, ESP8266, ESP32, or separate microcontroller gateway is required.
 
 1. Install the platform package for your OS (Windows EXE installer, Linux DEB/RPM/AppImage, or macOS DMG) or run from source with Node.js 22+.
 2. Set BITVOID_DEPLOYMENT_MODE=self-hosted and BITVOID_NETWORK_MODE=lan (or hotspot where hardware supports it).
-3. On first startup, the Server creates a one-time owner-only enrollment file (<dataDir>/first-run-enrollment.txt, mode 0600).
+3. On first startup, the Server creates a one-time enrollment file (<dataDir>/first-run-enrollment.txt, mode 0600 by default; the Debian/RPM packages use mode 0640 for the restricted desktop-admin group).
 4. Launch the **BitVoid Server Desktop Dashboard**, enter the one-time enrollment code, and create your Server Administrator account (minimum 12-character password). The enrollment file is deleted automatically.
 
 ### Linux desktop administration permissions
@@ -43,7 +43,7 @@ The Windows installer only opens TCP port 8787 for the **Private** firewall prof
    BITVOID_TLS_KEY=/etc/bitvoid-server/certs/server.key
    ```
 3. Bind to the VPN interface IP or restrict host firewall rules strictly to the VPN subnet. **Never** expose unencrypted port 8787, the SQLite database, or the local IPC administration socket to the public Internet.
-4. Administer via the local Desktop Dashboard or over SSH using bitvoid-admin (talking to the 0600 Unix domain socket).
+4. Administer via the local Desktop Dashboard or over SSH using bitvoid-admin (talking to the protected Unix domain socket; packaged Linux installs grant only the bitvoid-admin group access).
 
 ### macOS service installation
 
