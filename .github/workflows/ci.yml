@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        node: ["20", "22"]
+        node: ["22"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -107,7 +107,7 @@ jobs:
             qt_host: linux
             qt_target: desktop
             qt_arch: linux_gcc_64
-          - os: windows-latest
+          - os: windows-2022
             qt_host: windows
             qt_target: desktop
             qt_arch: win64_msvc2022_64
@@ -128,7 +128,7 @@ jobs:
       - name: Install Qt 6.7
         uses: jurplel/install-qt-action@v4
         with:
-          version: "6.7.3"
+          version: "6.8.3"
           host: ${{ matrix.qt_host }}
           target: ${{ matrix.qt_target }}
           arch: ${{ matrix.qt_arch }}
