@@ -158,6 +158,7 @@ jobs:
           Copy-Item desktop\build\Release\bitvoid-server-desktop.exe dist\stage-windows\desktop\
           Copy-Item (Get-Command node).Source dist\stage-windows\runtime\node.exe
           Copy-Item packaging\windows\install-service.ps1 dist\stage-windows\packaging\windows\
+          Copy-Item packaging\windows\WinSW-LICENSE.txt dist\stage-windows\WinSW-LICENSE.txt
           # Pin the stable WinSW release and verify its GitHub-published SHA-256 digest before bundling.
           $release = Invoke-RestMethod -Headers @{ Accept = "application/vnd.github+json"; "X-GitHub-Api-Version" = "2022-11-28" } -Uri "https://api.github.com/repos/winsw/winsw/releases/tags/v.2.14.1"
           $asset = $release.assets | Where-Object { $_.name -eq "WinSW-x64.exe" } | Select-Object -First 1
