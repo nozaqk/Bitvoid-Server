@@ -52,7 +52,7 @@ QString ServiceController::queryServiceStatus() const {
     return QStringLiteral("not-installed");
 #elif defined(Q_OS_MACOS)
     if (runOsCommand(QStringLiteral("launchctl"), {QStringLiteral("list")}, &out)) {
-        const QStringList lines = out.split(QLatin1Char('\\n'));
+        const QStringList lines = out.split(QLatin1Char('\n'));
         for (const QString &line : lines) {
             if (!line.trimmed().endsWith(QStringLiteral("com.bitvoid.server"))) continue;
             const QStringList columns = line.simplified().split(QLatin1Char(' '), Qt::SkipEmptyParts);
