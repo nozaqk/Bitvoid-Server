@@ -25,6 +25,7 @@ function Invoke-WinSw {
 
 function Ensure-DataAndConfig {
     New-Item -ItemType Directory -Path $DataDir -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $DataDir "service-logs") -Force | Out-Null
     if (-not (Test-Path -LiteralPath $EnvFile -PathType Leaf)) {
         $bytes = New-Object byte[] 48
         $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
@@ -43,7 +44,7 @@ function Ensure-DataAndConfig {
         [System.IO.File]::WriteAllText(
             $EnvFile,
             (($lines -join [Environment]::NewLine) + [Environment]::NewLine),
-            (New-Object System.Text.UTF8Encoding($false))
+            [System.Text.UTF8Encoding]::new($false)
         )
     }
 
