@@ -48,5 +48,5 @@ test("loadProtectedEnv loads CRLF env files and never overrides existing variabl
 
 test("loadProtectedEnv reports a missing file without failing startup", () => {
   const result = loadProtectedEnv({ DOTENV_CONFIG_PATH: "/nonexistent/server.env" }, "linux");
-  assert.deepEqual(result, { path: "/nonexistent/server.env", loaded: false });
+  assert.deepEqual(result, { path: "/nonexistent/server.env", exists: false, loaded: false, error: "file not found" });
 });

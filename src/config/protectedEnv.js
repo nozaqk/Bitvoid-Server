@@ -26,13 +26,27 @@ export function resolveProtectedEnvFile(env = process.env, platform = process.pl
  */
 export function loadProtectedEnv(env = process.env, platform = process.platform) {
   const file = resolveProtectedEnvFile(env, platform);
-  if (!file) return { path: null, loaded: false };
-  if (!existsSync(file)) return { path: file, loaded: false };
+  if (!file) return { path: null, exists: false, loaded: false, error: null };
+  const exists = existsSync(file);
+  if (!exists) return { path: file, exists, loaded: false, error: "file not found" };
   const result = loadDotenv({ path: file, override: false, quiet: true });
-  return { path: file, loaded: !result.error };
+  return {
+    path: file,
+    exists,
+    loaded: !result.error,
+    error: result.error ? result.error.message : null,
+  };
 }
 
 // Load eagerly when imported by the Server entry point, before any module reads configuration.
 const startup = loadProtectedEnv();
 export const protectedEnvStatus = startup;
+
+if (startup.path) {
+  // Startup diagnostics go to stderr so they appear in the service error log.
+  console.error(
+    `[protected-env] path=${startup.path} exists=${startup.exists} loaded=${startup.loaded}` +
+      (startup.error ? ` error=${startup.error}` : "")
+  );
+}
 
