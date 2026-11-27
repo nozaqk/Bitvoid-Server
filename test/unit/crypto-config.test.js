@@ -10,6 +10,7 @@ import {
   safeEqual
 } from "../../src/security/crypto.js";
 import { EncryptedConfigStore } from "../../src/security/configStore.js";
+import { loadConfig } from "../../src/config/env.js";
 
 test("HKDF produces distinct subkeys for different purposes", () => {
   const secret = "a-very-strong-test-master-secret-32-chars-minimum";
@@ -68,4 +69,29 @@ test("safeEqual compares strings in constant-time", () => {
   assert.equal(safeEqual("abc123", "abc123"), true);
   assert.equal(safeEqual("abc123", "abc124"), false);
   assert.equal(safeEqual("abc", "abcdef"), false);
+});
+
+
+test("local IPC and enrollment file permissions default to owner-only and allow only explicit admin-group modes", () => {
+  const base = { BITVOID_TOKEN_SECRET: "x".repeat(48) };
+  const defaults = loadConfig(base);
+  assert.equal(defaults.ipcSocketMode, 0o600);
+  assert.equal(defaults.enrollmentFileMode, 0o600);
+
+  const packaged = loadConfig({
+    ...base,
+    BITVOID_IPC_SOCKET_MODE: "0660",
+    BITVOID_ENROLLMENT_FILE_MODE: "0640"
+  });
+  assert.equal(packaged.ipcSocketMode, 0o660);
+  assert.equal(packaged.enrollmentFileMode, 0o640);
+
+  assert.throws(
+    () => loadConfig({ ...base, BITVOID_IPC_SOCKET_MODE: "0777" }),
+    /must be 0600 or 0660/i
+  );
+  assert.throws(
+    () => loadConfig({ ...base, BITVOID_ENROLLMENT_FILE_MODE: "0644" }),
+    /must be 0600 or 0640/i
+  );
 });
