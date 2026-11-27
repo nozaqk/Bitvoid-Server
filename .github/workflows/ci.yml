@@ -125,7 +125,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libgl1-mesa-dev libxkbcommon-dev
 
-      - name: Install Qt 6.7
+      - name: Install Qt 6.8.3
         uses: jurplel/install-qt-action@v4
         with:
           version: "6.8.3"
