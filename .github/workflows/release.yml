@@ -158,6 +158,16 @@ jobs:
           Copy-Item desktop\build\Release\bitvoid-server-desktop.exe dist\stage-windows\desktop\
           Copy-Item (Get-Command node).Source dist\stage-windows\runtime\node.exe
           Copy-Item packaging\windows\install-service.ps1 dist\stage-windows\packaging\windows\
+          # Pin the stable WinSW release and verify its GitHub-published SHA-256 digest before bundling.
+          $release = Invoke-RestMethod -Headers @{ Accept = "application/vnd.github+json"; "X-GitHub-Api-Version" = "2022-11-28" } -Uri "https://api.github.com/repos/winsw/winsw/releases/tags/v.2.14.1"
+          $asset = $release.assets | Where-Object { $_.name -eq "WinSW-x64.exe" } | Select-Object -First 1
+          if (-not $asset) { throw "Pinned WinSW x64 release asset was not found." }
+          if ($asset.digest -notmatch "^sha256:[A-Fa-f0-9]{64}$") { throw "WinSW release asset has no valid published SHA-256 digest." }
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile dist\stage-windows\BitVoidServer.exe
+          $actual = (Get-FileHash dist\stage-windows\BitVoidServer.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          $expected = $asset.digest.Substring(7).ToLowerInvariant()
+          if ($actual -ne $expected) { throw "WinSW SHA-256 verification failed." }
+          Copy-Item packaging\windows\BitVoidServer.xml dist\stage-windows\BitVoidServer.xml
           windeployqt --qmldir desktop\qml dist\stage-windows\desktop\bitvoid-server-desktop.exe
 
       - name: Build Inno Setup Installer EXE
