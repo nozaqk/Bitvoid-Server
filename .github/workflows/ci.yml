@@ -37,6 +37,15 @@ jobs:
       - name: Run unit, contract, integration, and security tests
         run: npm test
 
+      - name: Validate macOS launchd packaging
+        if: runner.os == 'macOS'
+        run: |
+          plutil -lint packaging/macos/com.bitvoid.server.plist
+          bash -n packaging/macos/start-server.sh
+          bash -n "packaging/macos/Install BitVoid Server.command"
+          bash -n "packaging/macos/Uninstall BitVoid Server Service.command"
+          bash -n packaging/macos/build-dmg.sh
+
       - name: Validate Windows service configuration and installer script
         if: runner.os == 'Windows'
         shell: pwsh
