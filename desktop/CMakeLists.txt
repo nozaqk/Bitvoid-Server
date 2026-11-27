@@ -21,10 +21,11 @@ qt_add_executable(bitvoid-server-desktop
 )
 
 if(WIN32)
-    enable_language(RC)
-    target_sources(bitvoid-server-desktop PRIVATE bitvoid-server-desktop.rc)
-    set_source_files_properties(bitvoid-server-desktop.rc PROPERTIES
-        COMPILE_FLAGS "/I${CMAKE_CURRENT_SOURCE_DIR}"
+    # MSVC/Qt already emits the executable manifest resource. Supply the custom
+    # elevation manifest as the linker input instead of compiling a second RT_MANIFEST.
+    target_link_options(bitvoid-server-desktop PRIVATE
+        "/MANIFEST:EMBED"
+        "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/bitvoid-server-desktop.manifest"
     )
 endif()
 
