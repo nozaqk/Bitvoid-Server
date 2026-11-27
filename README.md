@@ -31,7 +31,7 @@ BitVoid Server is the cross-platform, local-first application Server and native 
 ## Quick Start (Development / Source Run)
 
 ### Requirements
-- Node.js **20 or newer** (npm included)
+- Node.js **22 or newer** (npm included)
 - For building the native desktop UI from source: CMake 3.21+, C++17 compiler, Qt 6.5+
 
 ### Setup & Run
