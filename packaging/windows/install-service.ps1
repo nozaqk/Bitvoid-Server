@@ -53,6 +53,15 @@ function Ensure-DataAndConfig {
     if ($LASTEXITCODE -ne 0) {
         throw "Could not secure the BitVoid Server data directory ACL."
     }
+
+    # The Server service runs as LocalSystem and must read the protected environment file.
+    # Grant it explicitly on the file itself so inherited or newly created ACL state cannot block it.
+    & icacls.exe $EnvFile /inheritance:r /grant:r "*S-1-5-18:(F)" "*S-1-5-32-544:(F)" | Write-Host
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not grant the BitVoid Server service access to its environment file."
+    }
+    Write-Host "Protected environment file ACL:"
+    & icacls.exe $EnvFile | Write-Host
 }
 
 function Remove-ExistingService {
