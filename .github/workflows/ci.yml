@@ -55,7 +55,7 @@ jobs:
 
   desktop-build:
     name: Native Qt 6 Desktop App (${{ matrix.os }})
-    runs-on: @@OS@@
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
