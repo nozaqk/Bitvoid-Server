@@ -59,9 +59,12 @@ function Remove-ExistingService {
     $existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
     if (-not $existing) { return }
 
+    if ($existing.Status -ne "Stopped") {
+        Stop-Service -Name $ServiceName -Force -ErrorAction Stop
+        (Get-Service -Name $ServiceName).WaitForStatus("Stopped", [TimeSpan]::FromSeconds(30))
+    }
     if (Test-Path -LiteralPath $WrapperExe -PathType Leaf) {
-        & $WrapperExe stop 2>$null | Out-Null
-        & $WrapperExe uninstall 2>$null | Out-Null
+        Invoke-WinSw -Arguments @("uninstall")
     }
     $remaining = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
     if ($remaining) {
@@ -90,7 +93,8 @@ switch ($Action) {
 
         Remove-ExistingService
         Invoke-WinSw -Arguments @("install")
-        Invoke-WinSw -Arguments @("start")
+        Start-Service -Name $ServiceName
+        (Get-Service -Name $ServiceName).WaitForStatus("Running", [TimeSpan]::FromSeconds(30))
 
         if (-not (Get-NetFirewallRule -DisplayName "BitVoid Server (Private LAN)" -ErrorAction SilentlyContinue)) {
             New-NetFirewallRule -DisplayName "BitVoid Server (Private LAN)" -Direction Inbound -Protocol TCP -LocalPort 8787 -Action Allow -Profile Private | Out-Null
@@ -103,7 +107,16 @@ switch ($Action) {
         Remove-NetFirewallRule -DisplayName "BitVoid Server (Private LAN)" -ErrorAction SilentlyContinue
         Write-Host "BitVoid Server service removed. Persistent data at $DataDir was intentionally preserved."
     }
-    "start"   { Invoke-WinSw -Arguments @("start") }
-    "stop"    { Invoke-WinSw -Arguments @("stop") }
-    "restart" { Invoke-WinSw -Arguments @("restart") }
+    "start" {
+        Start-Service -Name $ServiceName
+        (Get-Service -Name $ServiceName).WaitForStatus("Running", [TimeSpan]::FromSeconds(30))
+    }
+    "stop" {
+        Stop-Service -Name $ServiceName -Force
+        (Get-Service -Name $ServiceName).WaitForStatus("Stopped", [TimeSpan]::FromSeconds(30))
+    }
+    "restart" {
+        Restart-Service -Name $ServiceName -Force
+        (Get-Service -Name $ServiceName).WaitForStatus("Running", [TimeSpan]::FromSeconds(30))
+    }
 }
