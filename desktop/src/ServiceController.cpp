@@ -98,7 +98,15 @@ bool ServiceController::restartService(QString *outputMessage) const {
 #ifdef Q_OS_WIN
     const QString wrapper = resolveWindowsServiceWrapperPath();
     if (QFileInfo::exists(wrapper)) {
-        return runOsCommand(wrapper, {QStringLiteral("restart")}, outputMessage);
+        const QString status = queryServiceStatus();
+        if (status == QStringLiteral("running") || status == QStringLiteral("transitioning")) {
+            QString stopOut;
+            if (!runOsCommand(wrapper, {QStringLiteral("stop")}, &stopOut)) {
+                if (outputMessage) *outputMessage = stopOut;
+                return false;
+            }
+        }
+        return runOsCommand(wrapper, {QStringLiteral("start")}, outputMessage);
     }
     QString stopOut;
     stopService(&stopOut);
