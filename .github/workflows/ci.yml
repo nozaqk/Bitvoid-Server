@@ -56,7 +56,10 @@ jobs:
           if ($service.service.ChildNodes | Where-Object { $_.Name -eq "envFile" }) { throw "WinSW must not read the protected environment file during installer commands." }
           if ($service.service.arguments -ne '"%BASE%\server\src\server.js"') { throw "Unexpected Server entry point arguments." }
           $dotenvPath = $service.service.env | Where-Object { $_.name -eq "DOTENV_CONFIG_PATH" }
-          if (-not $dotenvPath -or $dotenvPath.value -ne "%ProgramData%\BitVoidServer\server.env") { throw "Expected protected DOTENV_CONFIG_PATH service environment." }
+          if (-not $dotenvPath -or $dotenvPath.value -ne "C:\ProgramData\BitVoidServer\server.env") { throw "Expected absolute protected DOTENV_CONFIG_PATH service environment." }
+          [xml]$manifest = Get-Content desktop/bitvoid-server-desktop.manifest -Raw
+          $executionLevel = $manifest.assembly.trustInfo.security.requestedPrivileges.requestedExecutionLevel
+          if (-not $executionLevel -or $executionLevel.level -ne "asInvoker") { throw "Desktop dashboard must run without elevation." }
           $tokens = $null
           $parseErrors = $null
           [System.Management.Automation.Language.Parser]::ParseFile(
