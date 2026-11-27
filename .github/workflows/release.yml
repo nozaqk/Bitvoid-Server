@@ -1,0 +1,258 @@
+name: Release — Cross-Platform BitVoid Server
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Semantic version without leading v (e.g. 1.1.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  NODE_VERSION: "22.22.3"
+  QT_VERSION: "6.7.3"
+
+jobs:
+  verify:
+    name: Pre-Release Quality & Security Gate
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: meta
+        shell: bash
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VER="${{ inputs.version }}"
+          else
+            VER="${GITHUB_REF_NAME#v}"
+          fi
+          if ! [[ "$VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid semantic version: $VER" >&2
+            exit 1
+          fi
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VER" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+
+      - name: Generate npm SBOM metadata
+        run: npm sbom --sbom-format=cyclonedx > sbom-node.cdx.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom-metadata
+          path: sbom-node.cdx.json
+
+  build-linux:
+    name: Package Linux (.deb, AppImage, .rpm)
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install Linux packaging tools & Qt dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev libxkbcommon-dev dpkg-dev rpm fuse
+
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: linux
+          target: desktop
+          arch: linux_gcc_64
+
+      - name: Build Server production bundle + Qt 6 Desktop binary
+        run: |
+          npm ci --omit=dev
+          cmake -S desktop -B desktop/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build desktop/build --config Release
+
+      - name: Stage Linux distribution with pinned Node runtime
+        run: |
+          mkdir -p dist/stage-linux/server dist/stage-linux/desktop dist/stage-linux/runtime/bin
+          cp -a package.json package-lock.json src bin node_modules dist/stage-linux/server/
+          cp desktop/build/bitvoid-server-desktop dist/stage-linux/desktop/
+          cp "$(which node)" dist/stage-linux/runtime/bin/node
+
+      - name: Build DEB package
+        run: |
+          chmod +x packaging/linux/build-deb.sh
+          ./packaging/linux/build-deb.sh "${{ needs.verify.outputs.version }}" dist/stage-linux dist amd64
+
+      - name: Build RPM package
+        run: |
+          mkdir -p ~/rpmbuild/{SOURCES,SPECS,RPMS}
+          cp -a dist/stage-linux ~/rpmbuild/SOURCES/stage-linux
+          cp packaging/linux/bitvoid-server.service ~/rpmbuild/SOURCES/
+          rpmbuild -bb packaging/linux/bitvoid-server.spec --define "version ${{ needs.verify.outputs.version }}"
+          cp ~/rpmbuild/RPMS/*/*.rpm dist/
+
+      - name: Build AppImage (best-effort if appimagetool available)
+        run: |
+          curl -fsSL -o appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool packaging/linux/build-appimage.sh
+          PATH="$PWD:$PATH" APPIMAGE_EXTRACT_AND_RUN=1 ./packaging/linux/build-appimage.sh "${{ needs.verify.outputs.version }}" dist/stage-linux dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-linux
+          path: |
+            dist/*.deb
+            dist/*.rpm
+            dist/*.AppImage
+
+  build-windows:
+    name: Package Windows (.exe Installer)
+    needs: verify
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: windows
+          target: desktop
+          arch: win64_msvc2022_64
+
+      - name: Build Server production bundle & Qt 6 Desktop executable
+        shell: pwsh
+        run: |
+          npm ci --omit=dev
+          cmake -S desktop -B desktop/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build desktop/build --config Release
+
+      - name: Stage Windows distribution with pinned Node.js runtime & windeployqt
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist\stage-windows\server, dist\stage-windows\desktop, dist\stage-windows\runtime, dist\stage-windows\packaging\windows | Out-Null
+          Copy-Item -Recurse package.json, package-lock.json, src, bin, node_modules dist\stage-windows\server\
+          Copy-Item desktop\build\Release\bitvoid-server-desktop.exe dist\stage-windows\desktop\
+          Copy-Item (Get-Command node).Source dist\stage-windows\runtime\node.exe
+          Copy-Item packaging\windows\install-service.ps1 dist\stage-windows\packaging\windows\
+          windeployqt --qmldir desktop\qml dist\stage-windows\desktop\bitvoid-server-desktop.exe
+
+      - name: Build Inno Setup Installer EXE
+        shell: pwsh
+        run: |
+          iscc /DMyAppVersion=${{ needs.verify.outputs.version }} packaging\windows\bitvoid-server.iss
+
+      - name: Optional Authenticode signing when certificate secret is configured
+        env:
+          PFX_B64: ${{ secrets.WINDOWS_SIGN_PFX_BASE64 }}
+          PFX_PASS: ${{ secrets.WINDOWS_SIGN_PFX_PASSWORD }}
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:PFX_B64)) {
+            Write-Host "Skipping Authenticode signing (WINDOWS_SIGN_PFX_BASE64 secret not configured)."
+            exit 0
+          }
+          [IO.File]::WriteAllBytes("codesign.pfx", [Convert]::FromBase64String($env:PFX_B64))
+          signtool sign /fd SHA256 /f codesign.pfx /p $env:PFX_PASS /tr http://timestamp.digicert.com /td SHA256 dist\BitVoid-Server-*.exe
+          Remove-Item -Force codesign.pfx
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-windows
+          path: dist/BitVoid-Server-*.exe
+
+  build-macos:
+    name: Package macOS (.dmg)
+    needs: verify
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: mac
+          target: desktop
+          arch: clang_64
+
+      - name: Build Server production bundle & Qt 6 Desktop .app bundle
+        run: |
+          npm ci --omit=dev
+          cmake -S desktop -B desktop/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build desktop/build --config Release
+
+      - name: Stage macOS app bundle with pinned Node runtime & macdeployqt
+        run: |
+          mkdir -p dist/stage-macos
+          cp -a desktop/build/bitvoid-server-desktop.app "dist/stage-macos/BitVoid Server.app"
+          RESOURCES="dist/stage-macos/BitVoid Server.app/Contents/Resources"
+          mkdir -p "$RESOURCES/server" "$RESOURCES/runtime/bin"
+          cp -a package.json package-lock.json src bin node_modules "$RESOURCES/server/"
+          cp "$(which node)" "$RESOURCES/runtime/bin/node"
+          macdeployqt "dist/stage-macos/BitVoid Server.app" -qmldir=desktop/qml
+          chmod +x packaging/macos/build-dmg.sh
+          ./packaging/macos/build-dmg.sh "${{ needs.verify.outputs.version }}" "dist/stage-macos/BitVoid Server.app" dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: artifacts-macos
+          path: dist/BitVoid-Server-*.dmg
+
+  publish-release:
+    name: Verify Artifacts & Publish Immutable Release
+    needs: [verify, build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          merge-multiple: true
+
+      - name: Verify non-empty artifacts and generate SHA-256 checksums + release-manifest.json
+        run: |
+          node scripts/generate-checksums.js release-artifacts "${{ needs.verify.outputs.version }}"
+          cat release-artifacts/SHA256SUMS.txt
+
+      # IMPORTANT: Never delete older GitHub Releases! Each versioned release is immutable and retained.
+      - name: Publish GitHub Release ${{ needs.verify.outputs.tag }}
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ needs.verify.outputs.tag }}" release-artifacts/* \
+            --title "BitVoid Server ${{ needs.verify.outputs.tag }}" \
+            --generate-notes

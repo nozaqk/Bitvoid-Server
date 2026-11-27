@@ -1,0 +1,81 @@
+name: CI — BitVoid Server & Native Desktop
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  server-tests:
+    name: Server Core (${{ matrix.os }}, Node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: ["20", "22"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install dependencies from lockfile
+        run: npm ci
+
+      - name: Syntax check all JavaScript modules
+        run: npm run check
+
+      - name: Run unit, contract, integration, and security tests
+        run: npm test
+
+  desktop-build:
+    name: Native Qt 6 Desktop App (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            qt_host: linux
+            qt_target: desktop
+            qt_arch: linux_gcc_64
+          - os: windows-latest
+            qt_host: windows
+            qt_target: desktop
+            qt_arch: win64_msvc2022_64
+          - os: macos-latest
+            qt_host: mac
+            qt_target: desktop
+            qt_arch: clang_64
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux OpenGL / XKB build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev libxkbcommon-dev
+
+      - name: Install Qt 6.7
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.7.3"
+          host: ${{ matrix.qt_host }}
+          target: ${{ matrix.qt_target }}
+          arch: ${{ matrix.qt_arch }}
+
+      - name: Configure Qt 6 Desktop Application
+        run: cmake -S desktop -B desktop/build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Compile Qt 6 Desktop Application
+        run: cmake --build desktop/build --config Release
