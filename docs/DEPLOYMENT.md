@@ -25,7 +25,7 @@ Log out and back in after changing group membership. The group can access the lo
 
 ### Windows service installation
 
-The Windows installer bundles the pinned Node.js runtime, the native desktop dashboard, and the WinSW service wrapper. The installer registers **BitVoid Server** as an automatic Windows service and starts it. The service reads its protected configuration from %ProgramData%\BitVoidServer\server.env; the SQLite database, media, logs, and backups remain in the same persistent data directory across upgrades and uninstall.
+The Windows installer bundles the pinned Node.js runtime, the native desktop dashboard, and the WinSW service wrapper. The installer registers **BitVoid Server** as an automatic Windows service and starts it. The native dashboard requests Administrator elevation through UAC because it manages a LocalSystem service and reads the protected first-run enrollment file. The service reads its protected configuration from %ProgramData%\BitVoidServer\server.env; the SQLite database, media, logs, and backups remain in the same persistent data directory across upgrades and uninstall.
 
 The Windows installer only opens TCP port 8787 for the **Private** firewall profile. It does not add a Public-profile firewall exception. The service wrapper and service definition are installed beside the bundled runtime.
 
