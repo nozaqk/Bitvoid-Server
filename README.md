@@ -14,7 +14,7 @@ BitVoid Server is the cross-platform, local-first application Server and native 
    - Every registered account is a **Node** supporting multiple registered **Devices** and revocable **Sessions**.
    - Full communication engine: Argon2id auth (with transparent legacy bcrypt migration), refresh-token rotation + reuse detection, direct & group messaging, channels, Live Classes with WebRTC signaling, streaming file attachments, durable offline/multi-device sync, and real-time WebSocket event fan-out with instant session/device revocation.
    - Three-mode networking: Direct computer Wi-Fi hotspot capability detection & OS adapters, Router/Ethernet LAN with mDNS, and Multi-site VPN/private-link profiles with TLS certificate pinning.
-   - Protected local administration IPC (Unix domain socket `0600` on Linux/macOS; Windows named pipe on Windows) with separate administrator accounts and single-use local first-run enrollment (zero default passwords).
+   - Protected local administration IPC (owner-only Unix socket `0600` by default; packaged Linux installs use a restricted `bitvoid-admin` group with socket `0660` and enrollment file `0640`; macOS remains owner-only; Windows uses a named pipe) with separate administrator accounts and single-use local first-run enrollment (zero default passwords).
 
 2. **Native Desktop Administration Dashboard (`desktop/`):**
    - Native **C++17 + Qt 6 / QML** desktop application (no browser, no WebView, no Electron).
