@@ -98,16 +98,7 @@ switch ($Action) {
         Write-Host "Persistent data is stored at $DataDir and will be preserved by upgrades and uninstall."
     }
     "uninstall" {
-        if (Test-Path -LiteralPath $WrapperExe -PathType Leaf) {
-            & $WrapperExe stop 2>$null | Out-Null
-            & $WrapperExe uninstall 2>$null | Out-Null
-        } else {
-            $existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
-            if ($existing) {
-                Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-                & sc.exe delete $ServiceName | Out-Null
-            }
-        }
+        Remove-ExistingService
         Remove-NetFirewallRule -DisplayName "BitVoid Server (Private LAN)" -ErrorAction SilentlyContinue
         Write-Host "BitVoid Server service removed. Persistent data at $DataDir was intentionally preserved."
     }
