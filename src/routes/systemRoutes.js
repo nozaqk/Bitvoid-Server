@@ -5,10 +5,11 @@ import {
   SERVER_VERSION
 } from "../config/constants.js";
 import { nowIso } from "../security/crypto.js";
+import { inspectNetworkInterfaces } from "../network/interfaceMonitor.js";
 import { sendSuccess } from "./errorEnvelope.js";
 
 export function registerSystemRoutes(app, ctx) {
-  const { config, serverId, tlsContext, getCapabilities, metricsService } = ctx;
+  const { config, serverId, tlsContext, getCapabilities, metricsService, vpnProfileManager } = ctx;
 
   // Backward-compatible health endpoint (preserves exact v1 fields).
   app.get("/api/v1/health", async () => ({
@@ -45,6 +46,7 @@ export function registerSystemRoutes(app, ctx) {
       links: {
         health: "/api/v1/health",
         info: "/api/v1/server/info",
+        trustBundle: "/api/v1/server/trust-bundle",
         events: "/api/v1/events",
         register: "/api/v1/account/register",
         login: "/api/v1/account/login",
@@ -53,6 +55,25 @@ export function registerSystemRoutes(app, ctx) {
         me: "/api/v1/me"
       },
       serverTime: nowIso()
+    });
+  });
+
+  // Public read-only Server Identity & Trust Bootstrap Bundle for Android LAN/Hotspot/VPN profile pinning.
+  app.get("/api/v1/server/trust-bundle", async (request, reply) => {
+    const netInfo = inspectNetworkInterfaces({
+      port: app.server.address()?.port ?? config.port,
+      tlsEnabled: tlsContext.enabled,
+      hostBind: config.host
+    });
+    const preferredUrl =
+      config.networkMode === "vpn"
+        ? netInfo.recommendedVpnUrls[0]?.url || netInfo.recommendedLanUrls[0]?.url || null
+        : netInfo.recommendedLanUrls[0]?.url || netInfo.recommendedVpnUrls[0]?.url || null;
+
+    return sendSuccess(reply, {
+      profile: vpnProfileManager.buildTrustBootstrapPayload({ endpointUrl: preferredUrl }),
+      lanEndpoints: netInfo.recommendedLanUrls,
+      vpnEndpoints: netInfo.recommendedVpnUrls
     });
   });
 }

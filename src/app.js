@@ -28,8 +28,11 @@ import { AttachmentService } from "./services/attachmentService.js";
 import { MessagingService } from "./services/messagingService.js";
 import { ChannelService } from "./services/channelService.js";
 import { LiveClassService } from "./services/liveClassService.js";
+import { UpdateService } from "./services/updateService.js";
 import { loadTlsContext } from "./network/tlsManager.js";
 import { DiscoveryService } from "./network/discoveryService.js";
+import { HotspotManager } from "./network/hotspotManager.js";
+import { VpnProfileManager } from "./network/vpnProfileManager.js";
 import { registerErrorHandler } from "./routes/errorEnvelope.js";
 import {
   createAuthenticatePreHandler,
@@ -134,6 +137,15 @@ export async function createServerInstance({ config = null, env = process.env, o
     serverId,
     logService
   });
+  const hotspotManager = new HotspotManager({ auditService });
+  const vpnProfileManager = new VpnProfileManager({
+    db,
+    config: resolvedConfig,
+    serverId,
+    tlsContext,
+    auditService
+  });
+  const updateService = new UpdateService({ db, auditService });
 
   const syncService = new SyncService({ db, eventHub });
   const attachmentService = new AttachmentService({
@@ -235,6 +247,9 @@ export async function createServerInstance({ config = null, env = process.env, o
     nodeService,
     authService,
     discoveryService,
+    hotspotManager,
+    vpnProfileManager,
+    updateService,
     syncService,
     attachmentService,
     messagingService,
