@@ -59,17 +59,21 @@ function Remove-ExistingService {
     $existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
     if (-not $existing) { return }
 
-    if ($existing.Status -ne "Stopped") {
-        Stop-Service -Name $ServiceName -Force -ErrorAction Stop
-        (Get-Service -Name $ServiceName).WaitForStatus("Stopped", [TimeSpan]::FromSeconds(30))
-    }
     if (Test-Path -LiteralPath $WrapperExe -PathType Leaf) {
+        if ($existing.Status -ne "Stopped") {
+            try { Invoke-WinSw -Arguments @("stop") } catch {
+                Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+            }
+        }
         try {
             Invoke-WinSw -Arguments @("uninstall")
         } catch {
             & sc.exe delete $ServiceName | Out-Null
         }
     } else {
+        if ($existing.Status -ne "Stopped") {
+            Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+        }
         & sc.exe delete $ServiceName | Out-Null
     }
     $remaining = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
@@ -95,8 +99,7 @@ switch ($Action) {
 
         Remove-ExistingService
         Invoke-WinSw -Arguments @("install")
-        Start-Service -Name $ServiceName
-        (Get-Service -Name $ServiceName).WaitForStatus("Running", [TimeSpan]::FromSeconds(30))
+        Invoke-WinSw -Arguments @("start")
 
         if (-not (Get-NetFirewallRule -DisplayName "BitVoid Server (Private LAN)" -ErrorAction SilentlyContinue)) {
             New-NetFirewallRule -DisplayName "BitVoid Server (Private LAN)" -Direction Inbound -Protocol TCP -LocalPort 8787 -Action Allow -Profile Private | Out-Null
@@ -109,16 +112,10 @@ switch ($Action) {
         Remove-NetFirewallRule -DisplayName "BitVoid Server (Private LAN)" -ErrorAction SilentlyContinue
         Write-Host "BitVoid Server service removed. Persistent data at $DataDir was intentionally preserved."
     }
-    "start" {
-        Start-Service -Name $ServiceName
-        (Get-Service -Name $ServiceName).WaitForStatus("Running", [TimeSpan]::FromSeconds(30))
-    }
-    "stop" {
-        Stop-Service -Name $ServiceName -Force
-        (Get-Service -Name $ServiceName).WaitForStatus("Stopped", [TimeSpan]::FromSeconds(30))
-    }
+    "start"   { Invoke-WinSw -Arguments @("start") }
+    "stop"    { Invoke-WinSw -Arguments @("stop") }
     "restart" {
-        Restart-Service -Name $ServiceName -Force
-        (Get-Service -Name $ServiceName).WaitForStatus("Running", [TimeSpan]::FromSeconds(30))
+        Invoke-WinSw -Arguments @("stop")
+        Invoke-WinSw -Arguments @("start")
     }
 }
