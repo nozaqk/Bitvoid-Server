@@ -79,13 +79,30 @@ jobs:
             $healthy = $false
             for ($i = 0; $i -lt 30; $i++) {
               try {
-                $response = Invoke-WebRequest -Uri "http://127.0.0.1:8787/api/v1/health" -TimeoutSec 2
+                $response = Invoke-WebRequest -Uri "http://127.0.0.1:8787/api/v1/health" -TimeoutSec 2 -NoProxy
                 if ($response.StatusCode -eq 200) { $healthy = $true; break }
               } catch {
                 Start-Sleep -Seconds 1
               }
             }
-            if (-not $healthy) { throw "Windows service did not become healthy on port 8787." }
+            if (-not $healthy) {
+              Write-Host "Service status:"
+              Get-Service -Name "BitVoidServer" | Format-List * | Out-String | Write-Host
+              Write-Host "Server data files:"
+              Get-ChildItem -LiteralPath $dataDir -Recurse -Force -ErrorAction SilentlyContinue | Select-Object FullName, Length, LastWriteTime | Format-Table -AutoSize | Out-String | Write-Host
+              foreach ($log in @(
+                (Join-Path $dataDir "logs\bitvoid-server.log"),
+                (Join-Path $dataDir "service-logs\BitVoidServer.wrapper.log"),
+                (Join-Path $dataDir "service-logs\BitVoidServer.out.log"),
+                (Join-Path $dataDir "service-logs\BitVoidServer.err.log")
+              )) {
+                if (Test-Path -LiteralPath $log) {
+                  Write-Host "---- $log ----"
+                  Get-Content -LiteralPath $log -Tail 100
+                }
+              }
+              throw "Windows service did not become healthy on port 8787."
+            }
             $service = Get-Service -Name "BitVoidServer"
             if ($service.Status -ne "Running") { throw "Windows service is not running." }
           } finally {
