@@ -69,6 +69,10 @@ fi
 mkdir -p /var/lib/bitvoid-server /etc/bitvoid-server
 chown bitvoid:bitvoid-admin /var/lib/bitvoid-server
 chmod 0710 /var/lib/bitvoid-server
+if [ -f /var/lib/bitvoid-server/first-run-enrollment.txt ]; then
+  chown bitvoid:bitvoid-admin /var/lib/bitvoid-server/first-run-enrollment.txt
+  chmod 0640 /var/lib/bitvoid-server/first-run-enrollment.txt
+fi
 
 # Let the interactive package installer administer the Server through its protected local socket.
 # If installed by a GUI package manager, the user can join this group manually (documented).
