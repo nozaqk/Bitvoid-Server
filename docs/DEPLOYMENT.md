@@ -1,23 +1,67 @@
-# Deployment and LAN setup
+# BitVoid Server Deployment Guide
 
-The Server runs as a process on a general-purpose computer, not on ESP hardware. The Android phone reaches the computer's LAN IP on TCP port 8787.
+BitVoid Server uses **one unified Server core** for both **self-hosted** (local PC/laptop/dedicated machine) and **centrally hosted** (campus server, VPS, or private cloud VM) deployments. Administration in both modes happens through the native **Qt 6 Desktop Dashboard** (or local `bitvoid-admin` CLI) — never through a browser admin website or the Android app.
 
-## Windows Firewall
+No ESP-12E, ESP8266, ESP32, or separate microcontroller gateway is required.
 
-Run PowerShell as Administrator:
+---
 
-New-NetFirewallRule -DisplayName "BitVoid Server (Private LAN)" -Direction Inbound -Protocol TCP -LocalPort 8787 -Action Allow -Profile Private
+## 1. Self-Hosted Deployment
 
-Remove the rule when no longer needed:
+1. Install the platform package for your OS (Windows `.exe` installer, Linux `.deb`/`.rpm`/AppImage, or macOS `.dmg`) or run from source with Node.js 20+.
+2. Set `BITVOID_DEPLOYMENT_MODE=self-hosted` and `BITVOID_NETWORK_MODE=lan` (or `hotspot` where hardware supports it).
+3. On first startup, the Server creates a one-time owner-only enrollment file (`<dataDir>/first-run-enrollment.txt`, mode `0600`).
+4. Launch the **BitVoid Server Desktop Dashboard**, enter the one-time enrollment code, and create your Server Administrator account (minimum 12-character password). The enrollment file is deleted automatically.
 
-Remove-NetFirewallRule -DisplayName "BitVoid Server (Private LAN)"
+## 2. Centrally Hosted Deployment
 
-Do not create a public-profile rule or router port-forward.
+1. Provision a Linux/Windows/macOS host with persistent storage and private VPN connectivity (e.g. WireGuard).
+2. Configure `.env` / `/etc/bitvoid-server/server.env`:
+   ```env
+   BITVOID_DEPLOYMENT_MODE=centrally-hosted
+   BITVOID_NETWORK_MODE=vpn
+   BITVOID_MDNS_ENABLED=false
+   BITVOID_TLS_CERT=/etc/bitvoid-server/certs/server.crt
+   BITVOID_TLS_KEY=/etc/bitvoid-server/certs/server.key
+   ```
+3. Bind to the VPN interface IP or restrict host firewall rules strictly to the VPN subnet. **Never** expose unencrypted port `8787`, the SQLite database, or the local IPC administration socket to the public Internet.
+4. Administer via the local Desktop Dashboard or over SSH using `bitvoid-admin` (talking to the `0600` Unix domain socket).
 
-## TLS
+## 3. OS Background Service Managers
 
-Set BITVOID_TLS_CERT and BITVOID_TLS_KEY to readable certificate/key file paths. Use a certificate identity that the Android app validates. Do not disable certificate validation or accept arbitrary self-signed certificates. Android certificate trust/pinning is a separate integration task.
+| Platform | Service Manager | Unit / Helper | Default OS Data Directory |
+|---|---|---|---|
+| Windows | Windows Service (`BitVoidServer`) | `packaging/windows/install-service.ps1` | `%ProgramData%\BitVoidServer` |
+| Linux | `systemd` (`bitvoid-server.service`) | `packaging/linux/bitvoid-server.service` | `/var/lib/bitvoid-server` |
+| macOS | `launchd` (`com.bitvoid.server`) | `packaging/macos/com.bitvoid.server.plist` | `~/Library/Application Support/BitVoidServer` |
 
-## Data and backups
+Upgrades and uninstalls preserve the data directory intentionally.
 
-SQLite is stored at BITVOID_DATABASE_PATH. Stop the Server before copying the database for a simple consistent backup. Keep backups private.
+## 4. Firewall Guidance
+
+- **Windows:**
+  ```powershell
+  New-NetFirewallRule -DisplayName "BitVoid Server (Private LAN)" -Direction Inbound -Protocol TCP -LocalPort 8787 -Action Allow -Profile Private
+  ```
+- **Linux (UFW — restrict to trusted LAN or VPN subnet):**
+  ```bash
+  sudo ufw allow from 192.168.1.0/24 to any port 8787 proto tcp
+  ```
+- **macOS:** Allow incoming connections for the BitVoid Server runtime only on trusted private networks.
+
+## 5. Consistent Online Backups & Verified Restoration
+
+BitVoid Server uses SQLite's online backup API (`db.backup()`) so consistent snapshots work safely while the Server is live in WAL mode.
+
+```bash
+# Create an AES-256-GCM encrypted backup bundle (DB + media + SHA-256 manifest)
+BITVOID_BACKUP_PASSPHRASE="your-strong-passphrase" npm run backup -- create
+
+# Verify backup integrity in an isolated temp directory (checksums + PRAGMA integrity_check + FK check)
+BITVOID_BACKUP_PASSPHRASE="your-strong-passphrase" npm run backup -- verify <backupId>
+
+# Restore to a target database and media directory (creates automatic pre-restore rollback snapshot)
+BITVOID_BACKUP_PASSPHRASE="your-strong-passphrase" npm run backup -- restore <backupId> /path/to/bitvoid.sqlite /path/to/media
+```
+
+Always store encrypted backup files and backup passphrases separately and keep both private.

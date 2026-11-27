@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.bitvoid.server</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Applications/BitVoid Server.app/Contents/Resources/runtime/bin/node</string>
+        <string>/Applications/BitVoid Server.app/Contents/Resources/server/src/server.js</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>BITVOID_USE_OS_DATA_DIR</key>
+        <string>true</string>
+        <key>BITVOID_HOST</key>
+        <string>0.0.0.0</string>
+        <key>BITVOID_PORT</key>
+        <string>8787</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/bitvoid-server.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/bitvoid-server.stderr.log</string>
+</dict>
+</plist>
