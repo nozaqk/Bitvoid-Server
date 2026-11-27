@@ -57,7 +57,7 @@ begin
   begin
     { Stop the previous service before Inno Setup replaces the wrapper executable. }
     PowerShellParams :=
-      '-NoProfile -ExecutionPolicy Bypass -Command "$s=Get-Service -Name BitVoidServer -ErrorAction SilentlyContinue; if($s){ Stop-Service -InputObject $s -Force; $s.WaitForStatus(''Stopped'', [TimeSpan]::FromSeconds(30)) }"';
+      '-NoProfile -ExecutionPolicy Bypass -Command "$s=Get-Service -Name BitVoidServer -ErrorAction SilentlyContinue; if($s -and $s.Status -ne ''Stopped''){ Stop-Service -InputObject $s -Force; $s.WaitForStatus(''Stopped'', [TimeSpan]::FromSeconds(30)) }"';
     if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
       PowerShellParams, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
       RaiseException('Could not start PowerShell to stop the previous BitVoid Server service.');
