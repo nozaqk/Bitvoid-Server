@@ -26,6 +26,9 @@ if(WIN32)
     target_link_options(bitvoid-server-desktop PRIVATE
         "/MANIFEST:EMBED"
         "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/bitvoid-server-desktop.manifest"
+        # Keep the linker's generated elevation snippet identical to the input manifest;
+        # otherwise mt.exe fails with C1010001 (conflicting "level" values).
+        "/MANIFESTUAC:level='requireAdministrator' uiAccess='false'"
     )
 endif()
 

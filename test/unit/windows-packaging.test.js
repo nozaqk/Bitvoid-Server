@@ -25,3 +25,8 @@ test("Windows desktop manifest requests administrator elevation for service cont
   const manifest = read("desktop/bitvoid-server-desktop.manifest");
   assert.match(manifest, /requestedExecutionLevel level="requireAdministrator"/);
 });
+
+test("Windows linker UAC level matches the embedded manifest to avoid mt.exe C1010001", () => {
+  const cmake = read("desktop/CMakeLists.txt");
+  assert.match(cmake, /\/MANIFESTUAC:level='requireAdministrator' uiAccess='false'/);
+});

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import "dotenv/config";
+import "./config/protectedEnv.js";
 import { createServerInstance } from "./app.js";
 
 let server;
