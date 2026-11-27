@@ -53,8 +53,8 @@ jobs:
           [xml]$service = Get-Content packaging/windows/BitVoidServer.xml -Raw
           if ($service.service.id -ne "BitVoidServer") { throw "Unexpected Windows service ID." }
           if ($service.service.executable -ne "%BASE%\runtime\node.exe") { throw "Unexpected Node runtime path." }
-          if ($service.service.envFile -ne "%ProgramData%\BitVoidServer\server.env") { throw "Unexpected persistent service environment file." }
-          if ($service.service.arguments -ne '"%BASE%\server\src\server.js"') { throw "Unexpected Server entry point arguments." }
+          if ($service.service.ChildNodes | Where-Object { $_.Name -eq "envFile" }) { throw "WinSW must not read the protected environment file during installer commands." }
+          if ($service.service.arguments -ne '--env-file="%ProgramData%\BitVoidServer\server.env" "%BASE%\server\src\server.js"') { throw "Unexpected Server entry point arguments." }
           $tokens = $null
           $parseErrors = $null
           [System.Management.Automation.Language.Parser]::ParseFile(
