@@ -416,7 +416,7 @@ Deliverables:
 - Record the approved target architecture and phased plan.
 - Make documentation-only changes; preserve all application code and repository history.
 
-Exit criteria: this document and the Android integration companion document are committed on reviewable branches. No application feature is claimed complete.
+Exit criteria: this document and the [Android integration companion document](./ANDROID-INTEGRATION.md) are committed on reviewable branches. No application feature is claimed complete.
 
 ### Phase 2 — Server core, migrations, and API compatibility
 
