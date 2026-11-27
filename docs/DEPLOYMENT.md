@@ -35,6 +35,12 @@ The Windows installer only opens TCP port 8787 for the **Private** firewall prof
 3. Bind to the VPN interface IP or restrict host firewall rules strictly to the VPN subnet. **Never** expose unencrypted port 8787, the SQLite database, or the local IPC administration socket to the public Internet.
 4. Administer via the local Desktop Dashboard or over SSH using bitvoid-admin (talking to the 0600 Unix domain socket).
 
+### macOS service installation
+
+After dragging **BitVoid Server.app** into `/Applications`, run **Install BitVoid Server.command** from the DMG. It registers a per-user LaunchAgent, creates a unique token secret on first start, and launches the background Server when that user is logged in. The first-run enrollment code is stored in the protected `~/Library/Application Support/BitVoidServer` data directory.
+
+To remove only the LaunchAgent, run **Uninstall BitVoid Server Service.command** from the DMG. This does not delete the app or any database, media, logs, backups, or configuration. The Server service runs in the signed-in user's session; it is not a system-wide daemon.
+
 ## 3. OS Background Service Managers
 
 | Platform | Service Manager | Unit / Helper | Default OS Data Directory |
