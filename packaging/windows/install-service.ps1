@@ -2,24 +2,35 @@ param(
     [Parameter(Mandatory = $true)]
     [ValidateSet("install", "uninstall", "start", "stop", "restart")]
     [string]$Action,
-
     [string]$InstallDir = "$env:ProgramFiles\BitVoid Server",
     [string]$DataDir = "$env:ProgramData\BitVoidServer"
 )
 
 $ErrorActionPreference = "Stop"
+Set-StrictMode -Version Latest
 $ServiceName = "BitVoidServer"
 $EnvFile = Join-Path $DataDir "server.env"
+$WrapperExe = Join-Path $InstallDir "BitVoidServer.exe"
+
+function Invoke-WinSw {
+    param([Parameter(Mandatory = $true)][string[]]$Arguments)
+    if (-not (Test-Path -LiteralPath $WrapperExe -PathType Leaf)) {
+        throw "The BitVoid Server service wrapper is missing: $WrapperExe"
+    }
+    & $WrapperExe @Arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "BitVoid Server service wrapper command failed: $($Arguments -join ' ') (exit $LASTEXITCODE)"
+    }
+}
 
 function Ensure-DataAndConfig {
-    if (-not (Test-Path $DataDir)) {
-        New-Item -ItemType Directory -Path $DataDir -Force | Out-Null
-    }
-    if (-not (Test-Path $EnvFile)) {
+    New-Item -ItemType Directory -Path $DataDir -Force | Out-Null
+    if (-not (Test-Path -LiteralPath $EnvFile -PathType Leaf)) {
         $bytes = New-Object byte[] 48
-        [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+        $rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+        try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
         $secret = [Convert]::ToBase64String($bytes)
-        @(
+        $lines = @(
             "BITVOID_TOKEN_SECRET=$secret"
             "BITVOID_HOST=0.0.0.0"
             "BITVOID_PORT=8787"
@@ -28,44 +39,79 @@ function Ensure-DataAndConfig {
             "BITVOID_DATA_DIR=$DataDir"
             "BITVOID_DEPLOYMENT_MODE=self-hosted"
             "BITVOID_NETWORK_MODE=lan"
-        ) | Set-Content -Path $EnvFile -Encoding UTF8
-        # Restrict permissions on server.env to Administrators and SYSTEM
-        icacls $EnvFile /inheritance:r /grant:r "SYSTEM:(F)" "Administrators:(F)" | Out-Null
+        )
+        [System.IO.File]::WriteAllText(
+            $EnvFile,
+            (($lines -join [Environment]::NewLine) + [Environment]::NewLine),
+            (New-Object System.Text.UTF8Encoding($false))
+        )
     }
+
+    # Restrict the database, media, backups, logs, and token secret to SYSTEM and local administrators.
+    & icacls.exe $DataDir /inheritance:r /grant:r "*S-1-5-18:(OI)(CI)(F)" "*S-1-5-32-544:(OI)(CI)(F)" /T /C | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not secure the BitVoid Server data directory ACL."
+    }
+}
+
+function Remove-ExistingService {
+    $existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    if (-not $existing) { return }
+
+    if (Test-Path -LiteralPath $WrapperExe -PathType Leaf) {
+        & $WrapperExe stop 2>$null | Out-Null
+        & $WrapperExe uninstall 2>$null | Out-Null
+    }
+    $remaining = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    if ($remaining) {
+        Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+        & sc.exe delete $ServiceName | Out-Null
+    }
+    for ($i = 0; $i -lt 20; $i++) {
+        if (-not (Get-Service -Name $ServiceName -ErrorAction SilentlyContinue)) { return }
+        Start-Sleep -Milliseconds 500
+    }
+    throw "The previous BitVoid Server service could not be removed."
 }
 
 switch ($Action) {
     "install" {
         Ensure-DataAndConfig
-        $NodeExe = Join-Path $InstallDir "runtime\node.exe"
-        $EntryJs = Join-Path $InstallDir "server\src\server.js"
-        $RunnerCmd = "`"$NodeExe`" `"$EntryJs`""
-
-        # Create or update scheduled boot task / service launcher cleanly preserving user data.
-        $existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
-        if ($existing) {
-            Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-            sc.exe delete $ServiceName | Out-Null
-            Start-Sleep -Seconds 2
+        if (-not (Test-Path -LiteralPath (Join-Path $InstallDir "runtime\node.exe") -PathType Leaf)) {
+            throw "Bundled Node.js runtime was not found under $InstallDir."
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path $InstallDir "server\src\server.js") -PathType Leaf)) {
+            throw "BitVoid Server entry point was not found under $InstallDir."
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path $InstallDir "BitVoidServer.xml") -PathType Leaf)) {
+            throw "BitVoid Server service configuration is missing."
         }
 
-        # Register private-network firewall rule only (NEVER public profile)
+        Remove-ExistingService
+        Invoke-WinSw -Arguments @("install")
+        Invoke-WinSw -Arguments @("start")
+
         if (-not (Get-NetFirewallRule -DisplayName "BitVoid Server (Private LAN)" -ErrorAction SilentlyContinue)) {
             New-NetFirewallRule -DisplayName "BitVoid Server (Private LAN)" -Direction Inbound -Protocol TCP -LocalPort 8787 -Action Allow -Profile Private | Out-Null
         }
-
-        Write-Host "BitVoid Server data directory initialized at $DataDir (existing data preserved)."
-        Write-Host "Configured runner: $RunnerCmd"
+        Write-Host "BitVoid Server Windows Service installed and started."
+        Write-Host "Persistent data is stored at $DataDir and will be preserved by upgrades and uninstall."
     }
     "uninstall" {
-        $existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
-        if ($existing) {
-            Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
-            sc.exe delete $ServiceName | Out-Null
+        if (Test-Path -LiteralPath $WrapperExe -PathType Leaf) {
+            & $WrapperExe stop 2>$null | Out-Null
+            & $WrapperExe uninstall 2>$null | Out-Null
+        } else {
+            $existing = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+            if ($existing) {
+                Stop-Service -Name $ServiceName -Force -ErrorAction SilentlyContinue
+                & sc.exe delete $ServiceName | Out-Null
+            }
         }
-        Write-Host "BitVoid Server service removed. User data at $DataDir was intentionally preserved."
+        Remove-NetFirewallRule -DisplayName "BitVoid Server (Private LAN)" -ErrorAction SilentlyContinue
+        Write-Host "BitVoid Server service removed. Persistent data at $DataDir was intentionally preserved."
     }
-    "start"   { Start-Service -Name $ServiceName }
-    "stop"    { Stop-Service -Name $ServiceName -Force }
-    "restart" { Restart-Service -Name $ServiceName -Force }
+    "start"   { Invoke-WinSw -Arguments @("start") }
+    "stop"    { Invoke-WinSw -Arguments @("stop") }
+    "restart" { Invoke-WinSw -Arguments @("restart") }
 }
