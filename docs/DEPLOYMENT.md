@@ -8,7 +8,7 @@ No ESP-12E, ESP8266, ESP32, or separate microcontroller gateway is required.
 
 ## 1. Self-Hosted Deployment
 
-1. Install the platform package for your OS (Windows EXE installer, Linux DEB/RPM/AppImage, or macOS DMG) or run from source with Node.js 20+.
+1. Install the platform package for your OS (Windows EXE installer, Linux DEB/RPM/AppImage, or macOS DMG) or run from source with Node.js 22+.
 2. Set BITVOID_DEPLOYMENT_MODE=self-hosted and BITVOID_NETWORK_MODE=lan (or hotspot where hardware supports it).
 3. On first startup, the Server creates a one-time owner-only enrollment file (<dataDir>/first-run-enrollment.txt, mode 0600).
 4. Launch the **BitVoid Server Desktop Dashboard**, enter the one-time enrollment code, and create your Server Administrator account (minimum 12-character password). The enrollment file is deleted automatically.
