@@ -25,13 +25,13 @@ The Windows installer only opens TCP port 8787 for the **Private** firewall prof
 
 1. Provision a Linux/Windows/macOS host with persistent storage and private VPN connectivity (e.g. WireGuard).
 2. Configure the environment file for the operating system:
-   \`\`\`env
+   ```env
    BITVOID_DEPLOYMENT_MODE=centrally-hosted
    BITVOID_NETWORK_MODE=vpn
    BITVOID_MDNS_ENABLED=false
    BITVOID_TLS_CERT=/etc/bitvoid-server/certs/server.crt
    BITVOID_TLS_KEY=/etc/bitvoid-server/certs/server.key
-   \`\`\`
+   ```
 3. Bind to the VPN interface IP or restrict host firewall rules strictly to the VPN subnet. **Never** expose unencrypted port 8787, the SQLite database, or the local IPC administration socket to the public Internet.
 4. Administer via the local Desktop Dashboard or over SSH using bitvoid-admin (talking to the 0600 Unix domain socket).
 
@@ -49,19 +49,19 @@ Upgrades and uninstalls preserve the data directory intentionally.
 
 - **Windows:** Allow TCP port 8787 only on the Private profile.
 - **Linux (UFW — restrict to trusted LAN or VPN subnet):**
-  \`\`\`bash
+  ```bash
   sudo ufw allow from 192.168.1.0/24 to any port 8787 proto tcp
-  \`\`\`
+  ```
 - **macOS:** Allow incoming connections for the BitVoid Server runtime only on trusted private networks.
 
 ## 5. Consistent Online Backups & Verified Restoration
 
 BitVoid Server uses SQLite's online backup API (db.backup()) so consistent snapshots work safely while the Server is live in WAL mode.
 
-\`\`\`bash
+```bash
 BITVOID_BACKUP_PASSPHRASE="your-strong-passphrase" npm run backup -- create
 BITVOID_BACKUP_PASSPHRASE="your-strong-passphrase" npm run backup -- verify <backupId>
 BITVOID_BACKUP_PASSPHRASE="your-strong-passphrase" npm run backup -- restore <backupId> /path/to/bitvoid.sqlite /path/to/media
-\`\`\`
+```
 
 Always store encrypted backup files and backup passphrases separately and keep both private.
