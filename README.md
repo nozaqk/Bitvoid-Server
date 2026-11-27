@@ -9,7 +9,7 @@ BitVoid Server is the cross-platform, local-first application Server and native 
 ## Architecture Overview
 
 1. **Headless BitVoid Server Core (`src/`):**
-   - Modular Node.js 20+ / Fastify 5 service backed by SQLite (WAL mode + versioned migrations).
+   - Modular Node.js 22+ / Fastify 5 service backed by SQLite (WAL mode + versioned migrations).
    - Unified codebase supporting both **self-hosted** and **centrally hosted** deployments.
    - Every registered account is a **Node** supporting multiple registered **Devices** and revocable **Sessions**.
    - Full communication engine: Argon2id auth (with transparent legacy bcrypt migration), refresh-token rotation + reuse detection, direct & group messaging, channels, Live Classes with WebRTC signaling, streaming file attachments, durable offline/multi-device sync, and real-time WebSocket event fan-out with instant session/device revocation.
