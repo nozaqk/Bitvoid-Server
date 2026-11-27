@@ -1,0 +1,20 @@
+BitVoid Server for macOS
+
+1. Drag "BitVoid Server.app" into the Applications folder.
+2. Double-click "Install BitVoid Server.command" in this disk image.
+3. The installer registers a per-user launchd background service, creates a unique
+   protected Server token secret on first start, and opens the desktop dashboard.
+4. Complete the one-time administrator enrollment shown by the dashboard.
+
+The Server runs while this macOS user is logged in. Local clients can connect over
+the same Wi-Fi hotspot or router/Ethernet LAN without Internet access.
+
+To remove only the background service, run "Uninstall BitVoid Server Service.command".
+This preserves the app, database, media, backups, logs, and Server configuration.
+
+Server data:
+  ~/Library/Application Support/BitVoidServer
+
+Dashboard logs:
+  /tmp/bitvoid-server.stdout.log
+  /tmp/bitvoid-server.stderr.log
