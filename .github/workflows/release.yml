@@ -228,6 +228,9 @@ jobs:
           mkdir -p "$RESOURCES/server" "$RESOURCES/runtime/bin"
           cp -a package.json package-lock.json src bin node_modules "$RESOURCES/server/"
           cp "$(which node)" "$RESOURCES/runtime/bin/node"
+          cp packaging/macos/com.bitvoid.server.plist "$RESOURCES/com.bitvoid.server.plist"
+          cp packaging/macos/start-server.sh "$RESOURCES/start-server.sh"
+          chmod 0755 "$RESOURCES/start-server.sh"
           macdeployqt "dist/stage-macos/BitVoid Server.app" -qmldir=desktop/qml
           chmod +x packaging/macos/build-dmg.sh
           ./packaging/macos/build-dmg.sh "${{ needs.verify.outputs.version }}" "dist/stage-macos/BitVoid Server.app" dist
