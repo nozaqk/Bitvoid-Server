@@ -59,7 +59,7 @@ jobs:
           if (-not $dotenvPath -or $dotenvPath.value -ne "C:\ProgramData\BitVoidServer\server.env") { throw "Expected absolute protected DOTENV_CONFIG_PATH service environment." }
           [xml]$manifest = Get-Content desktop/bitvoid-server-desktop.manifest -Raw
           $executionLevel = $manifest.assembly.trustInfo.security.requestedPrivileges.requestedExecutionLevel
-          if (-not $executionLevel -or $executionLevel.level -ne "asInvoker") { throw "Desktop dashboard must run without elevation." }
+          if (-not $executionLevel -or $executionLevel.level -ne "requireAdministrator") { throw "Desktop dashboard must request elevation to control the Windows service." }
           $tokens = $null
           $parseErrors = $null
           [System.Management.Automation.Language.Parser]::ParseFile(
