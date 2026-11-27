@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<service>
+  <id>BitVoidServer</id>
+  <name>BitVoid Server</name>
+  <description>BitVoid local-first application Server background service.</description>
+  <executable>%BASE%\runtime\node.exe</executable>
+  <arguments>--env-file="%ProgramData%\BitVoidServer\server.env" "%BASE%\server\src\server.js"</arguments>
+  <workingdirectory>%BASE%\server</workingdirectory>
+  <startmode>Automatic</startmode>
+  <onfailure action="restart" delay="5 sec" />
+  <resetfailure>1 hour</resetfailure>
+  <stoptimeout>30 sec</stoptimeout>
+  <logpath>%ProgramData%\BitVoidServer\service-logs</logpath>
+  <log mode="roll" />
+</service>
