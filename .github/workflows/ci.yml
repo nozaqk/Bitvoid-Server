@@ -77,13 +77,20 @@ jobs:
           try {
             & $installScript -Action install -InstallDir $stage -DataDir $dataDir
             $healthy = $false
-            for ($i = 0; $i -lt 30; $i++) {
-              try {
-                $response = Invoke-WebRequest -Uri "http://127.0.0.1:8787/api/v1/health" -TimeoutSec 2 -NoProxy
-                if ($response.StatusCode -eq 200) { $healthy = $true; break }
-              } catch {
-                Start-Sleep -Seconds 1
+            $healthUrls = @(
+              "http://127.0.0.1:8787/api/v1/health",
+              "http://127.0.0.1:8787/health"
+            )
+            for ($i = 0; $i -lt 30 -and -not $healthy; $i++) {
+              foreach ($url in $healthUrls) {
+                try {
+                  $response = Invoke-WebRequest -Uri $url -TimeoutSec 2 -NoProxy
+                  if ($response.StatusCode -eq 200) { $healthy = $true; break }
+                } catch {
+                  # Keep checking the alternate health route and retry briefly.
+                }
               }
+              if (-not $healthy) { Start-Sleep -Seconds 1 }
             }
             if (-not $healthy) {
               Write-Host "Service status:"
