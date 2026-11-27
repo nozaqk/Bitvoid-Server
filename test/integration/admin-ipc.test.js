@@ -10,12 +10,14 @@ test("Protected local IPC administration: owner-only socket permissions, first-r
     const info = await env.listen();
     const ipcPath = info.ipc.ipcPath;
     assert.equal(info.ipc.enabled, true);
-    assert.ok(existsSync(ipcPath));
 
-    // 1. Verify Unix socket permissions are strictly owner-only (0600)
+    // Unix sockets are filesystem entries; Windows named pipes are not.
     if (process.platform !== "win32") {
+      assert.ok(existsSync(ipcPath));
       const mode = statSync(ipcPath).mode & 0o777;
       assert.equal(mode, 0o600, "Admin IPC Unix socket must be chmod 0600");
+    } else {
+      assert.match(ipcPath, /^\\\\\.\\pipe\\bitvoid-test-/);
     }
 
     // 2. Check initial status -> first-run enrollment required, NO default admin password!
