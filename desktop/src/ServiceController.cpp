@@ -138,7 +138,7 @@ QString ServiceController::resolveDefaultLogFilePath() {
     const QString progData = qEnvironmentVariable("PROGRAMDATA", QStringLiteral("C:/ProgramData"));
     return QDir(progData + QStringLiteral("/BitVoidServer/logs")).filePath(QStringLiteral("bitvoid-server.log"));
 #elif defined(Q_OS_MACOS)
-    const QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    const QString dataDir = QDir::home().filePath(QStringLiteral("Library/Application Support/BitVoidServer"));
     return QDir(dataDir + QStringLiteral("/logs")).filePath(QStringLiteral("bitvoid-server.log"));
 #else
     const QString sysLog = QStringLiteral("/var/lib/bitvoid-server/logs/bitvoid-server.log");
