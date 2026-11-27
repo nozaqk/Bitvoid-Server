@@ -28,5 +28,6 @@ async function shutdown(signal) {
   }
 }
 
+server.onShutdownRequested(() => shutdown("IPC_ADMIN_SHUTDOWN"));
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));

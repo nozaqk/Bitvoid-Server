@@ -29,6 +29,8 @@ import { MessagingService } from "./services/messagingService.js";
 import { ChannelService } from "./services/channelService.js";
 import { LiveClassService } from "./services/liveClassService.js";
 import { UpdateService } from "./services/updateService.js";
+import { AdminAuthService } from "./services/adminAuthService.js";
+import { AdminIpcServer } from "./ipc/adminIpcServer.js";
 import { loadTlsContext } from "./network/tlsManager.js";
 import { DiscoveryService } from "./network/discoveryService.js";
 import { HotspotManager } from "./network/hotspotManager.js";
@@ -146,6 +148,13 @@ export async function createServerInstance({ config = null, env = process.env, o
     auditService
   });
   const updateService = new UpdateService({ db, auditService });
+  const adminAuthService = new AdminAuthService({
+    db,
+    config: resolvedConfig,
+    passwordHasher,
+    tokenManager,
+    auditService
+  });
 
   const syncService = new SyncService({ db, eventHub });
   const attachmentService = new AttachmentService({
@@ -250,6 +259,7 @@ export async function createServerInstance({ config = null, env = process.env, o
     hotspotManager,
     vpnProfileManager,
     updateService,
+    adminAuthService,
     syncService,
     attachmentService,
     messagingService,
@@ -285,11 +295,21 @@ export async function createServerInstance({ config = null, env = process.env, o
   }, 60_000);
   maintenanceTimer.unref();
 
+  let shutdownCallback = null;
+  const adminIpcServer = new AdminIpcServer({
+    ctx,
+    onShutdownRequested: () => {
+      if (shutdownCallback) shutdownCallback();
+    }
+  });
+  ctx.adminIpcServer = adminIpcServer;
+
   let closed = false;
   app.addHook("onClose", async () => {
     if (closed) return;
     closed = true;
     clearInterval(maintenanceTimer);
+    await adminIpcServer.stop();
     discoveryService.stop();
     eventHub.disconnectAll();
     try {
@@ -303,6 +323,9 @@ export async function createServerInstance({ config = null, env = process.env, o
   return {
     app,
     ctx,
+    onShutdownRequested(fn) {
+      shutdownCallback = fn;
+    },
     async start() {
       const address = await app.listen({
         host: resolvedConfig.host,
@@ -310,6 +333,12 @@ export async function createServerInstance({ config = null, env = process.env, o
       });
       const actualPort = app.server.address()?.port ?? resolvedConfig.port;
       const mdnsResult = discoveryService.start(actualPort);
+
+      let ipcInfo = { enabled: false, ipcPath: null };
+      if (resolvedConfig.ipcEnabled) {
+        const startedIpc = await adminIpcServer.start();
+        ipcInfo = { enabled: true, ipcPath: startedIpc.ipcPath };
+      }
 
       logService.write({
         level: "info",
@@ -321,11 +350,12 @@ export async function createServerInstance({ config = null, env = process.env, o
           address,
           port: actualPort,
           mdns: mdnsResult.started,
+          ipc: ipcInfo.enabled,
           schemaVersion: migrationResult.currentVersion
         }
       });
 
-      return { address, port: actualPort, serverId, mdns: mdnsResult };
+      return { address, port: actualPort, serverId, mdns: mdnsResult, ipc: ipcInfo };
     },
     async close() {
       await app.close();
