@@ -92,6 +92,8 @@ jobs:
           $installScript = "$stage\packaging\windows\install-service.ps1"
           try {
             & $installScript -Action install -InstallDir $stage -DataDir $dataDir
+            Write-Host "Env file ACL after install:"
+            & icacls.exe (Join-Path $dataDir "server.env") | Write-Host
             $healthy = $false
             $healthUrls = @(
               "http://127.0.0.1:8787/api/v1/health",
