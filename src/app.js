@@ -23,6 +23,11 @@ import { DeviceService } from "./services/deviceService.js";
 import { SessionService } from "./services/sessionService.js";
 import { NodeService } from "./services/nodeService.js";
 import { AuthService } from "./services/authService.js";
+import { SyncService } from "./services/syncService.js";
+import { AttachmentService } from "./services/attachmentService.js";
+import { MessagingService } from "./services/messagingService.js";
+import { ChannelService } from "./services/channelService.js";
+import { LiveClassService } from "./services/liveClassService.js";
 import { loadTlsContext } from "./network/tlsManager.js";
 import { DiscoveryService } from "./network/discoveryService.js";
 import { registerErrorHandler } from "./routes/errorEnvelope.js";
@@ -33,6 +38,11 @@ import {
 import { registerSystemRoutes } from "./routes/systemRoutes.js";
 import { registerAccountRoutes } from "./routes/accountRoutes.js";
 import { registerAuthRoutes } from "./routes/authRoutes.js";
+import { registerMessagingRoutes } from "./routes/messagingRoutes.js";
+import { registerChannelRoutes } from "./routes/channelRoutes.js";
+import { registerLiveClassRoutes } from "./routes/liveClassRoutes.js";
+import { registerAttachmentRoutes } from "./routes/attachmentRoutes.js";
+import { registerSyncRoutes } from "./routes/syncRoutes.js";
 import { registerWsRoutes } from "./routes/wsRoutes.js";
 
 /**
@@ -125,6 +135,29 @@ export async function createServerInstance({ config = null, env = process.env, o
     logService
   });
 
+  const syncService = new SyncService({ db, eventHub });
+  const attachmentService = new AttachmentService({
+    db,
+    config: resolvedConfig,
+    auditService
+  });
+  const messagingService = new MessagingService({ db, syncService, eventHub });
+  const channelService = new ChannelService({ db, syncService });
+  const liveClassService = new LiveClassService({ db, syncService, eventHub });
+
+  const authorizeTopicSubscription = ({ accountId, topic }) => {
+    if (topic.startsWith("conversation:")) {
+      return Boolean(messagingService.isMember(topic.slice("conversation:".length), accountId));
+    }
+    if (topic.startsWith("channel:")) {
+      return channelService.canReadChannel(topic.slice("channel:".length), accountId);
+    }
+    if (topic.startsWith("live-class:")) {
+      return Boolean(liveClassService.isActiveMember(topic.slice("live-class:".length), accountId));
+    }
+    return false;
+  };
+
   const app = Fastify({
     logger: resolvedConfig.loggerEnabled
       ? {
@@ -172,7 +205,15 @@ export async function createServerInstance({ config = null, env = process.env, o
     "session-revocation",
     "sqlite-persistence",
     "websocket-events",
-    "encrypted-backups"
+    "encrypted-backups",
+    "direct-messaging",
+    "group-messaging",
+    "message-receipts",
+    "channels",
+    "live-classes",
+    "webrtc-signaling",
+    "attachments",
+    "durable-sync"
   ]);
 
   const ctx = {
@@ -194,24 +235,35 @@ export async function createServerInstance({ config = null, env = process.env, o
     nodeService,
     authService,
     discoveryService,
+    syncService,
+    attachmentService,
+    messagingService,
+    channelService,
+    liveClassService,
     loginRateLimiter,
     recoveryRateLimiter,
     authenticate,
     capabilities,
     getCapabilities: () => [...capabilities],
-    authorizeTopicSubscription: null
+    authorizeTopicSubscription
   };
 
   registerSystemRoutes(app, ctx);
   registerAccountRoutes(app, ctx);
   registerAuthRoutes(app, ctx);
+  registerMessagingRoutes(app, ctx);
+  registerChannelRoutes(app, ctx);
+  registerLiveClassRoutes(app, ctx);
+  registerAttachmentRoutes(app, ctx);
+  registerSyncRoutes(app, ctx);
   registerWsRoutes(app, ctx);
 
-  // Periodic housekeeping (session expiry enforcement & per-Node traffic flush).
+  // Periodic housekeeping (session expiry enforcement, expired signaling cleanup & per-Node traffic flush).
   const maintenanceTimer = setInterval(() => {
     try {
       metricsService.flushTrafficToDb();
       sessionService.cleanupExpiredSessions({ retentionDays: 30 });
+      liveClassService.purgeExpiredSignals();
     } catch {
       // Never crash background housekeeping loop
     }
