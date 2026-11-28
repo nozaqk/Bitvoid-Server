@@ -109,7 +109,7 @@ export function loadConfig(env = process.env, overrides = {}) {
   }
 
   const host = String(merged.BITVOID_HOST || "0.0.0.0").trim();
-  const displayName = String(merged.BITVOID_DISPLAY_NAME || "BitVoid Local Server").trim();
+  const displayName = String(merged.BITVOID_DISPLAY_NAME || "AirMesh Local Server").trim();
 
   const dataDir = resolveDefaultDataDir(merged);
   const databasePath = merged.BITVOID_DATABASE_PATH

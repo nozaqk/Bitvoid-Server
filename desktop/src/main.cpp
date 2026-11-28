@@ -11,11 +11,11 @@
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
-    app.setOrganizationName(QStringLiteral("BitVoid"));
-    app.setApplicationName(QStringLiteral("BitVoid Server"));
+    app.setOrganizationName(QStringLiteral("AirMesh"));
+    app.setApplicationName(QStringLiteral("AirMesh Server"));
     app.setApplicationVersion(QStringLiteral("1.1.0"));
 
-    // Closing the dashboard window must NOT stop the background BitVoid Server service.
+    // Closing the dashboard window must NOT stop the background AirMesh Server service.
     app.setQuitOnLastWindowClosed(true);
 
     QQuickStyle::setStyle(QStringLiteral("Basic"));
@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
     if (QSystemTrayIcon::isSystemTrayAvailable() && !engine.rootObjects().isEmpty()) {
         auto *mainWindow = qobject_cast<QWindow *>(engine.rootObjects().first());
         auto *tray = new QSystemTrayIcon(&app);
-        tray->setToolTip(QStringLiteral("BitVoid Server Dashboard (Background Service Independent)"));
+        tray->setToolTip(QStringLiteral("AirMesh Server Dashboard (Background Service Independent)"));
         auto *menu = new QMenu();
         menu->addAction(QStringLiteral("Show Dashboard"), [mainWindow]() {
             if (mainWindow) {

@@ -51,7 +51,7 @@ import { registerSyncRoutes } from "./routes/syncRoutes.js";
 import { registerWsRoutes } from "./routes/wsRoutes.js";
 
 /**
- * Construct a complete, modular BitVoid Server instance.
+ * Construct a complete, modular AirMesh Server instance.
  * Does not bind TCP ports until `start()` or `app.listen()` is called,
  * making unit, integration, contract, and security testing fast and isolated.
  */
@@ -344,7 +344,7 @@ export async function createServerInstance({ config = null, env = process.env, o
         level: "info",
         component: "server",
         eventCode: "server.started",
-        message: `BitVoid Server listening on ${address} (mode=${resolvedConfig.deploymentMode}/${resolvedConfig.networkMode}, tls=${tlsContext.enabled})`,
+        message: `AirMesh Server listening on ${address} (mode=${resolvedConfig.deploymentMode}/${resolvedConfig.networkMode}, tls=${tlsContext.enabled})`,
         context: {
           serverId,
           address,

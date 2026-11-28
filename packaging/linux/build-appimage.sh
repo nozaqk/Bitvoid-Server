@@ -26,7 +26,7 @@ chmod 0755 "$APPDIR/AppRun"
 cat > "$APPDIR/bitvoid-server.desktop" <<'EOF'
 [Desktop Entry]
 Type=Application
-Name=BitVoid Server
+Name=AirMesh Server
 Exec=AppRun
 Icon=bitvoid-server
 Categories=Network;System;
@@ -43,8 +43,8 @@ EOF
 
 mkdir -p "$OUT_DIR"
 if command -v appimagetool >/dev/null 2>&1; then
-  ARCH=x86_64 appimagetool "$APPDIR" "${OUT_DIR}/BitVoid-Server-${VERSION}-x86_64.AppImage"
-  echo "Built ${OUT_DIR}/BitVoid-Server-${VERSION}-x86_64.AppImage"
+  ARCH=x86_64 appimagetool "$APPDIR" "${OUT_DIR}/AirMesh-Server-${VERSION}-x86_64.AppImage"
+  echo "Built ${OUT_DIR}/AirMesh-Server-${VERSION}-x86_64.AppImage"
 else
   echo "appimagetool not found in PATH; install appimagetool (run inside Linux release runner)." >&2
   exit 1

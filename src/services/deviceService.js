@@ -36,14 +36,14 @@ export class DeviceService {
   registerOrTouchDevice({
     accountId,
     deviceId = null,
-    displayName = "BitVoid Client",
+    displayName = "AirMesh Client",
     platform = "unknown",
     appVersion = null,
     deviceFingerprint = null,
     publicKey = null
   }) {
     const now = nowIso();
-    const safeName = sanitizeDeviceName(displayName, "BitVoid Client");
+    const safeName = sanitizeDeviceName(displayName, "AirMesh Client");
     const safePlatform = normalizeDevicePlatform(platform);
     const safeAppVersion =
       typeof appVersion === "string" && appVersion.trim() ? appVersion.trim().slice(0, 40) : null;

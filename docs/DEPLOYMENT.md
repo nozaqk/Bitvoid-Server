@@ -1,6 +1,6 @@
-# BitVoid Server Deployment Guide
+# AirMesh Server Deployment Guide
 
-BitVoid Server uses **one unified Server core** for both **self-hosted** (local computer/laptop/dedicated machine) and **centrally hosted** (campus server, VPS, or private cloud VM) deployments. Administration in both modes happens through the native **Qt 6 Desktop Dashboard** (or local **bitvoid-admin** CLI) — never through a browser admin website or the Android app.
+AirMesh Server uses **one unified Server core** for both **self-hosted** (local computer/laptop/dedicated machine) and **centrally hosted** (campus server, VPS, or private cloud VM) deployments. Administration in both modes happens through the native **Qt 6 Desktop Dashboard** (or local **bitvoid-admin** CLI) — never through a browser admin website or the Android app.
 
 No ESP-12E, ESP8266, ESP32, or separate microcontroller gateway is required.
 
@@ -11,7 +11,7 @@ No ESP-12E, ESP8266, ESP32, or separate microcontroller gateway is required.
 1. Install the platform package for your OS (Windows EXE installer, Linux DEB/RPM/AppImage, or macOS DMG) or run from source with Node.js 22+.
 2. Set BITVOID_DEPLOYMENT_MODE=self-hosted and BITVOID_NETWORK_MODE=lan (or hotspot where hardware supports it).
 3. On first startup, the Server creates a one-time enrollment file (<dataDir>/first-run-enrollment.txt, mode 0600 by default; the Debian/RPM packages use mode 0640 for the restricted desktop-admin group).
-4. Launch the **BitVoid Server Desktop Dashboard**, enter the one-time enrollment code, and create your Server Administrator account (minimum 12-character password). The enrollment file is deleted automatically.
+4. Launch the **AirMesh Server Desktop Dashboard**, enter the one-time enrollment code, and create your Server Administrator account (minimum 12-character password). The enrollment file is deleted automatically.
 
 ### Linux desktop administration permissions
 
@@ -25,7 +25,7 @@ Log out and back in after changing group membership. The group can access the lo
 
 ### Windows service installation
 
-The Windows installer bundles the pinned Node.js runtime, the native desktop dashboard, and the WinSW service wrapper. The installer registers **BitVoid Server** as an automatic Windows service and starts it. The native dashboard requests Administrator elevation through UAC because it manages a LocalSystem service and reads the protected first-run enrollment file. The service reads its protected configuration from %ProgramData%\BitVoidServer\server.env; the SQLite database, media, logs, and backups remain in the same persistent data directory across upgrades and uninstall.
+The Windows installer bundles the pinned Node.js runtime, the native desktop dashboard, and the WinSW service wrapper. The installer registers **AirMesh Server** as an automatic Windows service and starts it. The native dashboard requests Administrator elevation through UAC because it manages a LocalSystem service and reads the protected first-run enrollment file. The service reads its protected configuration from %ProgramData%\BitVoidServer\server.env; the SQLite database, media, logs, and backups remain in the same persistent data directory across upgrades and uninstall.
 
 The Windows installer only opens TCP port 8787 for the **Private** firewall profile. It does not add a Public-profile firewall exception. The service wrapper and service definition are installed beside the bundled runtime.
 
@@ -47,9 +47,9 @@ The Windows installer only opens TCP port 8787 for the **Private** firewall prof
 
 ### macOS service installation
 
-After dragging **BitVoid Server.app** into `/Applications`, run **Install BitVoid Server.command** from the DMG. It registers a per-user LaunchAgent, creates a unique token secret on first start, and launches the background Server when that user is logged in. The first-run enrollment code is stored in the protected `~/Library/Application Support/BitVoidServer` data directory.
+After dragging **AirMesh Server.app** into `/Applications`, run **Install AirMesh Server.command** from the DMG. It registers a per-user LaunchAgent, creates a unique token secret on first start, and launches the background Server when that user is logged in. The first-run enrollment code is stored in the protected `~/Library/Application Support/BitVoidServer` data directory.
 
-To remove only the LaunchAgent, run **Uninstall BitVoid Server Service.command** from the DMG. This does not delete the app or any database, media, logs, backups, or configuration. The Server service runs in the signed-in user's session; it is not a system-wide daemon.
+To remove only the LaunchAgent, run **Uninstall AirMesh Server Service.command** from the DMG. This does not delete the app or any database, media, logs, backups, or configuration. The Server service runs in the signed-in user's session; it is not a system-wide daemon.
 
 ## 3. OS Background Service Managers
 
@@ -68,11 +68,11 @@ Upgrades and uninstalls preserve the data directory intentionally.
   ```bash
   sudo ufw allow from 192.168.1.0/24 to any port 8787 proto tcp
   ```
-- **macOS:** Allow incoming connections for the BitVoid Server runtime only on trusted private networks.
+- **macOS:** Allow incoming connections for the AirMesh Server runtime only on trusted private networks.
 
 ## 5. Consistent Online Backups & Verified Restoration
 
-BitVoid Server uses SQLite's online backup API (db.backup()) so consistent snapshots work safely while the Server is live in WAL mode.
+AirMesh Server uses SQLite's online backup API (db.backup()) so consistent snapshots work safely while the Server is live in WAL mode.
 
 ```bash
 BITVOID_BACKUP_PASSPHRASE="your-strong-passphrase" npm run backup -- create

@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <service>
   <id>BitVoidServer</id>
-  <name>BitVoid Server</name>
-  <description>BitVoid local-first application Server background service.</description>
+  <name>AirMesh Server</name>
+  <description>AirMesh local-first application Server background service.</description>
   <executable>%BASE%\runtime\node.exe</executable>
   <env name="DOTENV_CONFIG_PATH" value="C:\ProgramData\BitVoidServer\server.env" />
   <arguments>"%BASE%\server\src\server.js"</arguments>

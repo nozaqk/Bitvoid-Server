@@ -1,4 +1,4 @@
-# BitVoid Server Security Architecture
+# AirMesh Server Security Architecture
 
 ## Core Security Controls Implemented & Tested
 

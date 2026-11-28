@@ -1,6 +1,6 @@
-# BitVoid Server
+# AirMesh Server
 
-BitVoid Server is the cross-platform, local-first application Server and native desktop administration suite for the BitVoid ecosystem on **Windows, Linux, and macOS**.
+AirMesh Server is the cross-platform, local-first application Server and native desktop administration suite for the AirMesh ecosystem on **Windows, Linux, and macOS**.
 
 **No ESP8266, ESP-12E, ESP32, or microcontroller gateway is required. No browser dashboard or WebView is used. Local communication works completely offline without Internet access.**
 
@@ -8,7 +8,7 @@ BitVoid Server is the cross-platform, local-first application Server and native 
 
 ## Architecture Overview
 
-1. **Headless BitVoid Server Core (`src/`):**
+1. **Headless AirMesh Server Core (`src/`):**
    - Modular Node.js 22+ / Fastify 5 service backed by SQLite (WAL mode + versioned migrations).
    - Unified codebase supporting both **self-hosted** and **centrally hosted** deployments.
    - Every registered account is a **Node** supporting multiple registered **Devices** and revocable **Sessions**.

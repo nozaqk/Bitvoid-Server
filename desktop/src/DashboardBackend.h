@@ -9,7 +9,7 @@
 #include "ServiceController.h"
 
 /**
- * QML ViewModel bridging the native Qt 6 Desktop Dashboard to the BitVoid Server local IPC
+ * QML ViewModel bridging the native Qt 6 Desktop Dashboard to the AirMesh Server local IPC
  * and OS background service lifecycle controller.
  */
 class DashboardBackend : public QObject {

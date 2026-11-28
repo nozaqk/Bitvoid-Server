@@ -1,9 +1,9 @@
-# BitVoid Server API v1 — Authoritative Contract
+# AirMesh Server API v1 — Authoritative Contract
 
 **Version:** `1.1.0`  
 **Status:** Implemented and verified by automated unit, contract, integration, and security tests in `nozaqk/Bitvoid-Server`.
 
-This specification is the single authoritative API contract for BitVoid Server (self-hosted and centrally hosted deployments) and the native BitVoid Android client (`nozaqk/BitVoid`).
+This specification is the single authoritative API contract for AirMesh Server (self-hosted and centrally hosted deployments) and the native AirMesh Android client (`nozaqk/BitVoid`).
 
 > **Architecture boundary:** This HTTP/WebSocket API serves end-user Node clients (Android). Server-wide administration is **NOT** exposed over HTTP/WebSocket; all Server administration runs exclusively through the protected local IPC channel (Unix domain socket `0600` / Windows named pipe) used by the native Qt 6 Desktop Dashboard and `bitvoid-admin` CLI.
 

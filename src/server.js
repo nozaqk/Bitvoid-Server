@@ -7,10 +7,10 @@ try {
   server = await createServerInstance({ env: process.env });
   const info = await server.start();
   server.app.log.info(
-    `BitVoid Server listening on ${server.ctx.config.host}:${info.port} (serverId=${info.serverId}, mDNS=${info.mdns.started ? "active" : "disabled"})`
+    `AirMesh Server listening on ${server.ctx.config.host}:${info.port} (serverId=${info.serverId}, mDNS=${info.mdns.started ? "active" : "disabled"})`
   );
 } catch (err) {
-  console.error("Failed to start BitVoid Server:", err.message);
+  console.error("Failed to start AirMesh Server:", err.message);
   process.exit(1);
 }
 
@@ -18,7 +18,7 @@ let shuttingDown = false;
 async function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
-  server.app.log.info(`Received ${signal}, shutting down BitVoid Server cleanly...`);
+  server.app.log.info(`Received ${signal}, shutting down AirMesh Server cleanly...`);
   try {
     await server.close();
     process.exit(0);

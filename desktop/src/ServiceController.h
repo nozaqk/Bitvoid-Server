@@ -6,7 +6,7 @@
 
 /**
  * OS-native background Server service lifecycle manager & independent failure diagnostics.
- * Remains functional even when the BitVoid Server background service is stopped or crashed,
+ * Remains functional even when the AirMesh Server background service is stopped or crashed,
  * allowing administrators to inspect disk logs and start/stop/restart the service.
  */
 class ServiceController : public QObject {

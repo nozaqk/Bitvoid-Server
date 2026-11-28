@@ -8,7 +8,7 @@ PLIST_DEST="$LAUNCH_AGENT_DIR/com.bitvoid.server.plist"
 DOMAIN="gui/$(/usr/bin/id -u)"
 
 if [[ ! -d "$APP_PATH" || ! -f "$PLIST_SOURCE" ]]; then
-  echo "First drag BitVoid Server.app into /Applications, then run this installer again."
+  echo "First drag AirMesh Server.app into /Applications, then run this installer again."
   read -r -p "Press Return to close..."
   exit 1
 fi
@@ -20,7 +20,7 @@ launchctl bootstrap "$DOMAIN" "$PLIST_DEST"
 launchctl enable "$DOMAIN/com.bitvoid.server"
 launchctl kickstart -k "$DOMAIN/com.bitvoid.server"
 
-echo "BitVoid Server background service is installed for this macOS user."
+echo "AirMesh Server background service is installed for this macOS user."
 echo "Your Server data and generated secret are stored in:"
 echo "  $HOME/Library/Application Support/BitVoidServer"
 open "$APP_PATH"

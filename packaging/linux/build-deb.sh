@@ -33,8 +33,8 @@ chmod 0755 "$PKG_ROOT/usr/local/bin/bitvoid-admin"
 cat > "$PKG_ROOT/usr/share/applications/bitvoid-server.desktop" <<'EOF'
 [Desktop Entry]
 Type=Application
-Name=BitVoid Server Dashboard
-Comment=Local-first BitVoid Server Administration Dashboard
+Name=AirMesh Server Dashboard
+Comment=Local-first AirMesh Server Administration Dashboard
 Exec=/usr/local/bin/bitvoid-server-desktop
 Terminal=false
 Categories=Network;System;
@@ -46,9 +46,9 @@ Version: ${VERSION}
 Section: net
 Priority: optional
 Architecture: ${ARCH}
-Maintainer: BitVoid <maintainers@bitvoid.local>
-Description: Cross-platform local-first BitVoid Server and native Desktop Dashboard
- Includes the headless BitVoid Server systemd service, bundled Node.js runtime,
+Maintainer: AirMesh <maintainers@bitvoid.local>
+Description: Cross-platform local-first AirMesh Server and native Desktop Dashboard
+ Includes the headless AirMesh Server systemd service, bundled Node.js runtime,
  protected local IPC administration interface, and native Qt 6 desktop dashboard.
 EOF
 
@@ -86,7 +86,7 @@ if [ ! -f /etc/bitvoid-server/server.env ]; then
 BITVOID_TOKEN_SECRET=${SECRET}
 BITVOID_HOST=0.0.0.0
 BITVOID_PORT=8787
-BITVOID_DISPLAY_NAME=BitVoid Local Server
+BITVOID_DISPLAY_NAME=AirMesh Local Server
 BITVOID_DATA_DIR=/var/lib/bitvoid-server
 BITVOID_DEPLOYMENT_MODE=self-hosted
 BITVOID_NETWORK_MODE=lan
