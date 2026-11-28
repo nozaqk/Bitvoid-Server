@@ -42,7 +42,7 @@ test("CLI migration, CLI backup/verify, trust-bundle endpoint, and release check
     const artDir = join(distDir, "sub");
     execFileSync("mkdir", ["-p", artDir]);
     writeFileSync(join(distDir, "bitvoid-server_1.1.0_amd64.deb"), "fake-deb-content");
-    writeFileSync(join(artDir, "BitVoid-Server-1.1.0-windows-x64-setup.exe"), "fake-exe-content");
+    writeFileSync(join(artDir, "AirMesh-Server-1.1.0-windows-x64-setup.exe"), "fake-exe-content");
 
     execFileSync(process.execPath, ["scripts/generate-checksums.js", distDir, "1.1.0"], { encoding: "utf8" });
     assert.ok(existsSync(join(distDir, "SHA256SUMS.txt")));

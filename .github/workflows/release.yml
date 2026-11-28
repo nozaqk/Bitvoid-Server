@@ -187,13 +187,13 @@ jobs:
             exit 0
           }
           [IO.File]::WriteAllBytes("codesign.pfx", [Convert]::FromBase64String($env:PFX_B64))
-          signtool sign /fd SHA256 /f codesign.pfx /p $env:PFX_PASS /tr http://timestamp.digicert.com /td SHA256 dist\BitVoid-Server-*.exe
+          signtool sign /fd SHA256 /f codesign.pfx /p $env:PFX_PASS /tr http://timestamp.digicert.com /td SHA256 dist\AirMesh-Server-*.exe
           Remove-Item -Force codesign.pfx
 
       - uses: actions/upload-artifact@v4
         with:
           name: artifacts-windows
-          path: dist/BitVoid-Server-*.exe
+          path: dist/AirMesh-Server-*.exe
 
   build-macos:
     name: Package macOS (.dmg)
@@ -238,7 +238,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: artifacts-macos
-          path: dist/BitVoid-Server-*.dmg
+          path: dist/AirMesh-Server-*.dmg
 
   publish-release:
     name: Verify Artifacts & Publish Immutable Release

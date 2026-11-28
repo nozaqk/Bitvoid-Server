@@ -12,7 +12,7 @@ Rectangle {
         spacing: 16
 
         Text {
-            text: "BitVoid Server Administration"
+            text: "AirMesh Server Administration"
             color: "#f0f6fc"
             font.pixelSize: 24
             font.weight: Font.Bold
@@ -21,7 +21,7 @@ Rectangle {
 
         Text {
             text: !backend.serviceReachable
-                  ? "The background BitVoid Server service is not currently reachable over local IPC. You can start the service or inspect offline disk logs below."
+                  ? "The background AirMesh Server service is not currently reachable over local IPC. You can start the service or inspect offline disk logs below."
                   : (!backend.initialized
                      ? "First-Run Security Setup: Enter the one-time local enrollment code created on this computer to register the initial Server Administrator."
                      : "Sign in with your Server Administrator credentials. Node account passwords cannot access Server administration.")

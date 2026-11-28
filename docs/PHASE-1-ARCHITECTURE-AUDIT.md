@@ -1,4 +1,4 @@
-# BitVoid Phase 1 — Architecture Audit and Implementation Specification
+# AirMesh Phase 1 — Architecture Audit and Implementation Specification
 
 **Audit date:** 2026-11-27  
 **Scope:** `nozaqk/Bitvoid-Server` and `nozaqk/BitVoid`, both default branches (`main`)  
@@ -6,7 +6,7 @@
 
 ## 1. Executive decision
 
-The repositories contain a useful starting point, but they do not yet implement the approved BitVoid product architecture.
+The repositories contain a useful starting point, but they do not yet implement the approved AirMesh product architecture.
 
 The Server repository currently contains a small Node.js/Fastify service with SQLite-backed username/password accounts, recovery keys, revocable bearer sessions, health/identity endpoints, mDNS advertisement, and a minimal authenticated WebSocket heartbeat. It is not yet a desktop application, an operating-system background service, a dashboard, a hotspot manager, or a complete messaging server.
 
@@ -16,7 +16,7 @@ The Android repository contains the native Jetpack Compose client and substantia
 
 The approved product boundary remains:
 
-- The **BitVoid Server desktop application** owns the Server process, background service, configuration, storage, security, backups, updates, and all server-wide administration.
+- The **AirMesh Server desktop application** owns the Server process, background service, configuration, storage, security, backups, updates, and all server-wide administration.
 - The desktop application contains a **native embedded dashboard**. It is not a website, browser dashboard, remotely served web page, or Android administration screen.
 - The Android app is the end-user communication client. It must not administer the whole Server.
 - The same Server core supports **self-hosted** and **centrally hosted** deployments.
@@ -26,7 +26,7 @@ The approved product boundary remains:
 
 ## 2. Repository snapshot
 
-### 2.1 BitVoid Server
+### 2.1 AirMesh Server
 
 - Repository: https://github.com/nozaqk/Bitvoid-Server
 - Default branch: `main`
@@ -225,7 +225,7 @@ The Android `docs/SERVER-API-V1.md` still describes pairing endpoints and an API
 - Android defaults to `http://bitvoid.local:8787`.
 - The Android README describes `bitvoid-server.local` and `_bitvoid-server._tcp`.
 - The Android discovery implementation resolves `bitvoid.local` and scans `_http._tcp.`.
-- The Server currently advertises a Bonjour HTTP service named `BitVoid Server`; its Server API document describes the custom `_bitvoid-server._tcp` service and `bitvoid-server.local` hostname.
+- The Server currently advertises a Bonjour HTTP service named `AirMesh Server`; its Server API document describes the custom `_bitvoid-server._tcp` service and `bitvoid-server.local` hostname.
 - Standardize the service type, instance naming, hostname, TXT identity fields, and fallback rules. mDNS discovery is link-local and should not be expected to cross routers or VPN sites.
 - Android's current URL allowlist accepts a narrow set of private IPv4 addresses and `bitvoid.local`. It does not support arbitrary trusted VPN DNS names, IPv6 ULA, or common overlay-VPN address ranges. Replace the raw private-IP-only rule with explicit trusted Server profiles that verify the Server ID and TLS identity. Do not simply allow every public host.
 - `BitVoidBackendConnectionManager` currently selects the local Server or offline; its CLOUD enum/config fields are retained but cloud hosting is not selected. Add a deliberate self-hosted/central-host profile model rather than silently falling back to an Internet endpoint.
@@ -240,7 +240,7 @@ The Android manifest currently allows cleartext traffic application-wide. Keep a
 
 ### 6.1 Product components
 
-**A. BitVoid Server Service**
+**A. AirMesh Server Service**
 
 - One core service for all deployment types.
 - Runs headlessly and starts at operating-system boot.
@@ -249,7 +249,7 @@ The Android manifest currently allows cleartext traffic application-wide. Keep a
 - Exposes a versioned app API to Android and a separate management API over local IPC.
 - Can run on a local PC, a dedicated on-premises machine, or a central VPS/cloud VM.
 
-**B. BitVoid Server Desktop Application**
+**B. AirMesh Server Desktop Application**
 
 - Native cross-platform Windows, Linux, and macOS application.
 - Recommended UI direction: Qt 6/QML for a native desktop interface without a browser-hosted dashboard or Android WebView.
@@ -258,7 +258,7 @@ The Android manifest currently allows cleartext traffic application-wide. Keep a
 - For remote central administration, connects only through a configured VPN/private link and a separately authenticated management channel.
 - Closing the window hides/exits the dashboard process but does not stop the service. A clear Stop Server action is required.
 
-**C. BitVoid Android Application**
+**C. AirMesh Android Application**
 
 - Native Jetpack Compose end-user client.
 - Handles account access, Node identity, devices, direct/group messaging, channels, Live Classes, media, notifications, local cache/outbox, discovery, and reconnection.
@@ -309,7 +309,7 @@ Use one Server codebase and one API contract:
 - mDNS is not a multi-site discovery protocol; do not rely on multicast crossing routed VPNs.
 - Permit Android and desktop clients to connect to the trusted VPN Server profile after certificate/Server-ID verification.
 - Do not expose the Server port directly to the public Internet or assume NAT traversal is already implemented.
-- Internet access may carry the VPN tunnel, but the BitVoid protocol itself must not require a public cloud dependency. A private leased line or point-to-point link is also valid.
+- Internet access may carry the VPN tunnel, but the AirMesh protocol itself must not require a public cloud dependency. A private leased line or point-to-point link is also valid.
 
 ### 6.5 Desktop dashboard information architecture
 

@@ -75,7 +75,7 @@ export function inspectNetworkInterfaces({
         } else if (effectiveScope === "public" && (hostBind === "0.0.0.0" || hostBind === entry.address)) {
           publicExposureWarning =
             `Server is bound to ${hostBind} while interface "${name}" has a public IPv4 address (${entry.address}). ` +
-            "Restrict host firewall rules to private LAN / VPN interfaces and never expose BitVoid unencrypted to the public Internet.";
+            "Restrict host firewall rules to private LAN / VPN interfaces and never expose AirMesh unencrypted to the public Internet.";
         }
       }
     }

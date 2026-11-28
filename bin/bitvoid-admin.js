@@ -66,7 +66,7 @@ const COMMAND_MAP = {
 
 if (!cmd || !COMMAND_MAP[cmd]) {
   console.error(
-    `BitVoid Local Administration CLI (IPC: ${ipcPath})\n` +
+    `AirMesh Local Administration CLI (IPC: ${ipcPath})\n` +
       `Usage: node bin/bitvoid-admin.js <command> [--flags]\n` +
       `Commands: ${Object.keys(COMMAND_MAP).join(", ")}`
   );

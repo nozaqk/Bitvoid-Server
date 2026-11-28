@@ -288,7 +288,7 @@ export class AuthService {
     const enrolledDevice = this.deviceService.registerOrTouchDevice({
       accountId: row.id,
       deviceId: device?.deviceId || device?.id || null,
-      displayName: device?.displayName || device?.deviceName || "BitVoid Client",
+      displayName: device?.displayName || device?.deviceName || "AirMesh Client",
       platform: device?.platform || "unknown",
       appVersion: device?.appVersion || null,
       deviceFingerprint: device?.deviceFingerprint || device?.fingerprint || null,

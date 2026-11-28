@@ -1,4 +1,4 @@
-# BitVoid Android Client Integration — Phase 3 Companion Document
+# AirMesh Android Client Integration — Phase 3 Companion Document
 
 | | |
 |---|---|
@@ -408,7 +408,7 @@ Copied from [`PHASE-1-ARCHITECTURE-AUDIT.md` §9](./PHASE-1-ARCHITECTURE-AUDIT.m
 
 ---
 
-## 13. Open questions to resolve in the BitVoid session
+## 13. Open questions to resolve in the AirMesh session
 
 These cannot be answered from the Server repository and must be settled before Phase 3 code:
 

@@ -13,7 +13,7 @@ if [[ ! -x "$NODE_BIN" ]]; then
   exit 1
 fi
 if [[ ! -f "$SERVER_ENTRY" ]]; then
-  echo "BitVoid Server entry point is missing: $SERVER_ENTRY" >&2
+  echo "AirMesh Server entry point is missing: $SERVER_ENTRY" >&2
   exit 1
 fi
 
@@ -33,7 +33,7 @@ BITVOID_USE_OS_DATA_DIR=true
 BITVOID_DATA_DIR="$DATA_DIR"
 BITVOID_HOST=0.0.0.0
 BITVOID_PORT=8787
-BITVOID_DISPLAY_NAME="BitVoid Local Server"
+BITVOID_DISPLAY_NAME="AirMesh Local Server"
 BITVOID_DEPLOYMENT_MODE=self-hosted
 BITVOID_NETWORK_MODE=lan
 ENVEOF

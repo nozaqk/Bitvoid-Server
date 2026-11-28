@@ -71,10 +71,10 @@ export class AdminAuthService {
 
     mkdirSync(dirname(this.enrollmentFilePath), { recursive: true, mode: 0o700 });
     const fileBody = [
-      "BitVoid Server First-Run Administrator Enrollment",
+      "AirMesh Server First-Run Administrator Enrollment",
       "=================================================",
       "This single-use local enrollment code authorizes initial administrator setup",
-      "from the BitVoid Desktop Dashboard or local bitvoid-admin CLI.",
+      "from the AirMesh Desktop Dashboard or local bitvoid-admin CLI.",
       "This file is deleted automatically once setup completes.",
       "",
       `ENROLLMENT_CODE=${code}`,

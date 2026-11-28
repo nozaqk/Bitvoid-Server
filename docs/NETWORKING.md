@@ -1,6 +1,6 @@
-# BitVoid Three-Mode Networking Architecture
+# AirMesh Three-Mode Networking Architecture
 
-Local BitVoid operation **never requires Internet access or external cloud services**.
+Local AirMesh operation **never requires Internet access or external cloud services**.
 
 ---
 

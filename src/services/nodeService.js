@@ -4,7 +4,7 @@ import { isValidDisplayName, isValidNodeStatus } from "../security/validation.js
 
 /**
  * Node Management Service.
- * Every registered account in BitVoid is a Node (preserving `accounts.id` as the stable Node ID).
+ * Every registered account in AirMesh is a Node (preserving `accounts.id` as the stable Node ID).
  */
 export class NodeService {
   constructor({ db, eventHub = null, metricsService = null, sessionService = null, auditService = null }) {

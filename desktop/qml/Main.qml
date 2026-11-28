@@ -11,7 +11,7 @@ ApplicationWindow {
     height: 820
     minimumWidth: 960
     minimumHeight: 640
-    title: "BitVoid Server — Desktop Administration Dashboard"
+    title: "AirMesh Server — Desktop Administration Dashboard"
     color: "#0d1117"
 
     property int currentTab: 0
@@ -37,14 +37,14 @@ ApplicationWindow {
         modal: true
         anchors.centerIn: parent
         width: 440
-        title: "Stop BitVoid Server?"
+        title: "Stop AirMesh Server?"
         standardButtons: Dialog.Yes | Dialog.No
 
         Label {
             width: parent.width
             wrapMode: Text.WordWrap
             color: "#c9d1d9"
-            text: "Stopping the Server will disconnect connected BitVoid clients and interrupt local messaging until the background service is started again. The dashboard can remain open. Are you sure you want to stop the Server?"
+            text: "Stopping the Server will disconnect connected AirMesh clients and interrupt local messaging until the background service is started again. The dashboard can remain open. Are you sure you want to stop the Server?"
         }
 
         onAccepted: backend.stopBackgroundService()
@@ -68,7 +68,7 @@ ApplicationWindow {
                 spacing: 6
 
                 Text {
-                    text: "BitVoid Server"
+                    text: "AirMesh Server"
                     color: "#f0f6fc"
                     font.pixelSize: 18
                     font.weight: Font.Bold

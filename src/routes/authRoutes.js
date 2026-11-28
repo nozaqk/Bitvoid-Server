@@ -93,7 +93,7 @@ export function registerAuthRoutes(app, ctx) {
     const device = deviceService.registerOrTouchDevice({
       accountId: request.account.id,
       deviceId: body.deviceId || null,
-      displayName: body.displayName || body.deviceName || "BitVoid Client",
+      displayName: body.displayName || body.deviceName || "AirMesh Client",
       platform: body.platform || "unknown",
       appVersion: body.appVersion || null,
       deviceFingerprint: body.deviceFingerprint || body.fingerprint || null,

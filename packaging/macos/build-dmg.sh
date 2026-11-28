@@ -17,18 +17,18 @@ trap 'rm -rf "$DMG_STAGE"' EXIT
 cp -a "$APP_BUNDLE" "$DMG_STAGE/"
 ln -s /Applications "$DMG_STAGE/Applications"
 cp packaging/macos/INSTALL.txt "$DMG_STAGE/INSTALL.txt"
-cp "packaging/macos/Install BitVoid Server.command" "$DMG_STAGE/Install BitVoid Server.command"
-cp "packaging/macos/Uninstall BitVoid Server Service.command" "$DMG_STAGE/Uninstall BitVoid Server Service.command"
-chmod 0755 "$DMG_STAGE/Install BitVoid Server.command" "$DMG_STAGE/Uninstall BitVoid Server Service.command"
+cp "packaging/macos/Install AirMesh Server.command" "$DMG_STAGE/Install AirMesh Server.command"
+cp "packaging/macos/Uninstall AirMesh Server Service.command" "$DMG_STAGE/Uninstall AirMesh Server Service.command"
+chmod 0755 "$DMG_STAGE/Install AirMesh Server.command" "$DMG_STAGE/Uninstall AirMesh Server Service.command"
 
-DMG_OUT="${OUT_DIR}/BitVoid-Server-${VERSION}-macos.dmg"
+DMG_OUT="${OUT_DIR}/AirMesh-Server-${VERSION}-macos.dmg"
 rm -f "$DMG_OUT"
 
 if [ -n "${MACOS_SIGN_IDENTITY:-}" ]; then
   codesign --deep --force --options runtime --timestamp --sign "$MACOS_SIGN_IDENTITY" "$DMG_STAGE/BitVoid Server.app"
 fi
 
-hdiutil create -volname "BitVoid Server ${VERSION}" -srcfolder "$DMG_STAGE" -ov -format UDZO "$DMG_OUT"
+hdiutil create -volname "AirMesh Server ${VERSION}" -srcfolder "$DMG_STAGE" -ov -format UDZO "$DMG_OUT"
 
 if [ -n "${MACOS_SIGN_IDENTITY:-}" ]; then
   codesign --force --timestamp --sign "$MACOS_SIGN_IDENTITY" "$DMG_OUT"

@@ -50,5 +50,5 @@ export const LIMITS = Object.freeze({
 export const MDNS_CONFIG = Object.freeze({
   PRIMARY_SERVICE_TYPE: "bitvoid-server",
   COMPAT_SERVICE_TYPE: "http",
-  DEFAULT_INSTANCE_NAME: "BitVoid Server"
+  DEFAULT_INSTANCE_NAME: "AirMesh Server"
 });

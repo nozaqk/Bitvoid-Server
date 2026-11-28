@@ -42,8 +42,8 @@ jobs:
         run: |
           plutil -lint packaging/macos/com.bitvoid.server.plist
           bash -n packaging/macos/start-server.sh
-          bash -n "packaging/macos/Install BitVoid Server.command"
-          bash -n "packaging/macos/Uninstall BitVoid Server Service.command"
+          bash -n "packaging/macos/Install AirMesh Server.command"
+          bash -n "packaging/macos/Uninstall AirMesh Server Service.command"
           bash -n packaging/macos/build-dmg.sh
 
       - name: Validate Windows service configuration and installer script

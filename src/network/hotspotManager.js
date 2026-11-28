@@ -86,7 +86,7 @@ export class HotspotManager {
       requiresElevation: false,
       reason: `Direct Wi-Fi hotspot hosting is not supported on platform "${this.platform}".`,
       instructions: [
-        "Use Mode 2 (Existing Wi-Fi Router or Ethernet LAN) so Android devices reach BitVoid Server over the local network."
+        "Use Mode 2 (Existing Wi-Fi Router or Ethernet LAN) so Android devices reach AirMesh Server over the local network."
       ]
     };
   }
@@ -145,7 +145,7 @@ export class HotspotManager {
         requiresElevation: false,
         reason: "The installed Wi-Fi adapter driver does not report AP (Access Point) mode support.",
         instructions: [
-          "Use an external AP-capable Wi-Fi adapter or run BitVoid Server in Mode 2 (Existing Wi-Fi Router / Ethernet LAN)."
+          "Use an external AP-capable Wi-Fi adapter or run AirMesh Server in Mode 2 (Existing Wi-Fi Router / Ethernet LAN)."
         ]
       };
     }
@@ -331,7 +331,7 @@ export class HotspotManager {
 
     if (this.platform === "win32") {
       const err = new Error(
-        "Use Windows Settings -> Network & Internet -> Mobile hotspot or run the BitVoid Windows Helper with tethering permissions to activate the hotspot cleanly."
+        "Use Windows Settings -> Network & Internet -> Mobile hotspot or run the AirMesh Windows Helper with tethering permissions to activate the hotspot cleanly."
       );
       err.code = "hotspot_windows_manual_step";
       throw err;
