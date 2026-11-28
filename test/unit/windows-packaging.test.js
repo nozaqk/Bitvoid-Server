@@ -30,3 +30,15 @@ test("Windows linker UAC level matches the embedded manifest to avoid mt.exe C10
   const cmake = read("desktop/CMakeLists.txt");
   assert.match(cmake, /\/MANIFESTUAC:level='requireAdministrator' uiAccess='false'/);
 });
+
+test("Windows upgrade stops the previous service via the logged stop script, not an inline command", () => {
+  const iss = read("packaging/windows/bitvoid-server.iss");
+  const script = read("packaging/windows/stop-previous-service.ps1");
+  assert.match(iss, /Source: "stop-previous-service\.ps1"; DestDir: "\{tmp\}"; Flags: dontcopy/);
+  assert.match(iss, /ExtractTemporaryFile\('stop-previous-service\.ps1'\)/);
+  assert.match(iss, /-ServiceName BitVoidServer/);
+  assert.match(iss, /airmesh-stop\.log/);
+  assert.match(script, /sc\.exe stop/);
+  assert.match(script, /Stop-Process -Id/);
+  assert.match(script, /exit 2/);
+});
