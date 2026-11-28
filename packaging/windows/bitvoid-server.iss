@@ -28,6 +28,7 @@ CloseApplications=yes
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
+Source: "stop-previous-service.ps1"; DestDir: "{tmp}"; Flags: dontcopy deleteafterinstall
 ; Staged bundle directory prepared by CI: dist\stage-windows\*
 Source: "..\..\dist\stage-windows\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
@@ -52,17 +53,25 @@ var
   ResultCode: Integer;
   ServiceScript: string;
   PowerShellParams: string;
+  StopLog: string;
 begin
   if CurStep = ssInstall then
   begin
-    { Stop the previous service before Inno Setup replaces the wrapper executable. }
-    PowerShellParams :=
-      '-NoProfile -ExecutionPolicy Bypass -Command "$s=Get-Service -Name BitVoidServer -ErrorAction SilentlyContinue; if($s -and $s.Status -ne ''Stopped''){ Stop-Service -InputObject $s -Force; $s.WaitForStatus(''Stopped'', [TimeSpan]::FromSeconds(30)) }"';
+    { Stop the previous service before Inno Setup replaces the wrapper executable.
+      The script is extracted to {tmp} and logs to {tmp}\airmesh-stop.log for diagnosis. }
+    ExtractTemporaryFile('stop-previous-service.ps1');
+    StopLog := ExpandConstant('{tmp}\airmesh-stop.log');
+    PowerShellParams := '-NoProfile -ExecutionPolicy Bypass -File "' +
+      ExpandConstant('{tmp}\stop-previous-service.ps1') +
+      '" -ServiceName BitVoidServer -InstallDir "' + ExpandConstant('{app}') +
+      '" -LogPath "' + StopLog + '"';
     if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
       PowerShellParams, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
       RaiseException('Could not start PowerShell to stop the previous AirMesh Server service.');
     if ResultCode <> 0 then
-      RaiseException('Could not stop the previous AirMesh Server service before upgrading.');
+      RaiseException('Could not stop the previous AirMesh Server service before upgrading. ' +
+        'Stop the "AirMesh Server" service in Services (or uninstall the previous version), then run setup again. ' +
+        'Details: ' + StopLog);
   end;
 
   if CurStep = ssPostInstall then
