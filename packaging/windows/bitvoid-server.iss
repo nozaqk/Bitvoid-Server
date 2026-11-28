@@ -57,8 +57,8 @@ var
 begin
   if CurStep = ssInstall then
   begin
-    { Stop the previous service before Inno Setup replaces the wrapper executable.
-      The script is extracted to {tmp} and logs to {tmp}\airmesh-stop.log for diagnosis. }
+    // Stop the previous service before Inno Setup replaces the wrapper executable.
+    // The script is extracted to the temp dir and logs to airmesh-stop.log there for diagnosis.
     ExtractTemporaryFile('stop-previous-service.ps1');
     StopLog := ExpandConstant('{tmp}\airmesh-stop.log');
     PowerShellParams := '-NoProfile -ExecutionPolicy Bypass -File "' +
