@@ -268,5 +268,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${{ needs.verify.outputs.tag }}" release-artifacts/* \
-            --title "BitVoid Server ${{ needs.verify.outputs.tag }}" \
+            --title "AirMesh Server ${{ needs.verify.outputs.tag }}" \
             --generate-notes
